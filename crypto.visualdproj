@@ -191,11 +191,16 @@
   <filesToClean>*.obj;*.cmd;*.build;*.json;*.dep</filesToClean>
  </Config>
  <Folder name="crypto">
-  <Folder name="blockcipher">
-   <File path="blockcipher\aes.d" />
+  <Folder name="crypto">
+   <Folder name="blockcipher">
+    <File path="crypto\blockcipher\aes.d" />
+   </Folder>
+   <Folder name="hash">
+    <File path="crypto\hash\base.d" />
+    <File path="crypto\hash\sha1.d" />
+    <File path="crypto\hash\sha2.d" />
+   </Folder>
   </Folder>
-  <Folder name="hash">
-   <File path="hash\sha.d" />
-  </Folder>
+  <File path="main.d" />
  </Folder>
 </DProject>
