@@ -1,30 +1,31 @@
 module crypto.hash.base;
+import std.traits;
 
 /*
 Handles
-
-	Receieve data from caller
-	
-
-
+	Receieve data from caller, store it
 */
 
 abstract class Hash
 {
-	abstract @property uint digestLength();
-	abstract ubyte[] digest();
+	public abstract @property uint digestLength();
+
+	public abstract ubyte[] digest();
 	
-	protected abstract void finish()
+	protected abstract void putData(const(ubyte)[]);
+
+	public final void put(T)(in T data)
 	{
+		/*static if (isArray!T)
+		{
+			putData(cast(const(ubyte)[]) data);
+		}
+		else*/
+		putData(cast(const(ubyte)[]) data);
 
 	}
 
-
-
-
-
-
-	final string digestToHex(){
-		return ""; // todo
+	public final string digestHex(){
+		return "aabb";
 	}
 }
