@@ -197,6 +197,5 @@
   <Folder name="hash">
    <File path="hash\sha.d" />
   </Folder>
-  <File path="main.d" />
  </Folder>
 </DProject>
