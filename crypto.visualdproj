@@ -197,6 +197,7 @@
    </Folder>
    <Folder name="hash">
     <File path="crypto\hash\base.d" />
+    <File path="crypto\hash\merkle_damgaard.d" />
     <File path="crypto\hash\sha1.d" />
     <File path="crypto\hash\sha2.d" />
    </Folder>
