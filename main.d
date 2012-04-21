@@ -1,18 +1,16 @@
 module main;
 
 import crypto.hash.sha1;
+import crypto.blockcipher.aes;
 static import std.c.stdio;
 
 int main(string[] argv)
 {
-	auto sha1 = new SHA1;
+	//auto sha1 = new SHA1;
 
 
-	sha1.put("");
-	sha1.put("The quick brown fox jumps over the lazy cog");
-
-
-
+	//sha1.put("");
+	//sha1.put("The quick brown fox jumps over the lazy cog");
 
 	return 0;
 }
