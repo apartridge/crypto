@@ -11,18 +11,76 @@ import std.algorithm;
  *
  * Plaintext: 128 bits
  * Ciphertext: 128 bits
- * Keys: __128__, 192 or 256 bit
+ * Keys: 128, 192 or 256 bit
  *
  */
 
-alias uint[4] State; // Should be state_t or something? Maybe just state?
-alias uint[4] Key;
-
-class AES128
+class AES128 : AES!(4, 4, 10)
 {
-    static const uint Nk = 4;   // Key length (4 words)
-    static const uint Nb = 4;   // Block size (4 words)
-    static const uint Nr = 10;  // Number of rounds
+    this(ubyte[16] key) { super(key); }
+
+    unittest
+    {
+        auto message = cast(ubyte[16]) x"00112233445566778899aabbccddeeff";
+        auto key     = cast(ubyte[16]) x"000102030405060708090a0b0c0d0e0f";
+        auto cipher  = cast(ubyte[16]) x"69c4e0d86a7b0430d8cdb78070b4c55a";
+
+        auto aes = new AES128(key);
+
+        assert(aes.Encrypt(message) == cipher);
+        assert(aes.Decrypt(cipher) == message);
+    }
+}
+
+class AES192 : AES!(4, 6, 12)
+{
+    this(ubyte[24] key) { super(key); }
+
+    unittest
+    {
+        auto message = cast(ubyte[16]) x"00112233445566778899aabbccddeeff";
+        auto key     = cast(ubyte[24]) x"000102030405060708090a0b0c0d0e0f1011121314151617";
+        auto cipher  = cast(ubyte[16]) x"dda97ca4864cdfe06eaf70a0ec0d7191";
+
+        auto aes = new AES192(key);
+
+        assert(aes.Encrypt(message) == cipher);
+        assert(aes.Decrypt(cipher) == message);
+    }
+}
+
+class AES256 : AES!(4, 8, 14)
+{
+    this(ubyte[32] key) { super(key); }
+
+    unittest
+    {
+        auto message = cast(ubyte[16]) x"00112233445566778899aabbccddeeff";
+        auto key     = cast(ubyte[32]) x"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+        auto cipher  = cast(ubyte[16]) x"8ea2b7ca516745bfeafc49904b496089";
+
+        auto aes = new AES256(key);
+
+        assert(aes.Encrypt(message) == cipher);
+        assert(aes.Decrypt(cipher) == message);
+    }
+}
+
+/*
+ * Nk (key length in words)
+ * Nb (block length in words)
+ * Nr (number of rounds)
+ */
+class AES(uint Nb, uint Nk, uint Nr)
+if ((Nb == 4 && Nk == 4 && Nr == 10) || 
+    (Nb == 4 && Nk == 6 && Nr == 12) ||
+    (Nb == 4 && Nk == 8 && Nr == 14))
+{
+    alias uint[Nb] State;
+    alias uint[Nb] Key;
+
+    // Generate and store one key per round
+    protected Key[Nr+1] key;
 
     static const ubyte[] sbox = [
         0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -61,47 +119,26 @@ class AES128
         0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
         0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d
     ];
+
+    public this(ubyte[4*Nk] k)
+    {
+        KeyExpansion2( k );
+    }
     
-    private static ubyte[4*Nb] ReverseBytes(ubyte[4*Nb] b)
+    public ubyte[4*Nb] Encrypt(ubyte[4*Nb] message)
     {
-        ubyte[4*Nb] res;
-        for (uint i = 0; i < 4*Nb; ++i)
-            res[i] = b[4*Nb-1-i];
-        return res;
-    }
+        ubyte[4*Nb] m = message[0 .. 4*Nb];
 
-    private static uint[4] BytesToWords(ubyte[4*Nb] b)
-    {
-        uint[4] str;
-        for (uint i = 0; i < 4; ++i)
-            str[i] = b[4*i] << 24 | b[4*i+1] << 16 | b[4*i+2] << 8 | b[4*i+3];
-        return str;
-    }
-
-    private static ubyte[4*Nb] WordsToBytes(uint[4] w)
-    {
-        ubyte[4*Nb] bytes;
-        foreach (uint i, uint n; w)
-        {
-            bytes[4*i] = (n & 0xff000000) >> 24;
-            bytes[4*i+1] = (n & 0x00ff0000) >> 16;
-            bytes[4*i+2] = (n & 0x0000ff00) >> 8;
-            bytes[4*i+3] = (n & 0x000000ff);
-        }
-        return bytes;
-    }
-
-    public static ubyte[4*Nb] Encrypt(ubyte[4*Nb] m, ubyte[4*Nk] k)
-    {
         // Shuffle around bytes to conform to Intel standard
         State state = cast(State) BytesToWords(ReverseBytes(m));
-        Key key = cast(Key) BytesToWords(ReverseBytes(k));
+
+        //Key key = cast(Key) BytesToWords(ReverseBytes(k));
         PrintHex(0, "input", state);
 
-        Key[] w = KeyExpansion(key);
-        PrintHex(0, "k_sch", w[0]);
+        //Key[] w = KeyExpansion(key);
+        PrintHex(0, "k_sch", key[0]);
 
-        AddRoundKey(state, w[0]);
+        AddRoundKey(state, key[0]);
         PrintHex(0, "start", state);
 
         uint round = 0;
@@ -115,9 +152,9 @@ class AES128
 
             state = MixColumns(state);
             PrintHex(round, "m_col", state);
-            PrintHex(round, "k_sch", w[round]);
+            PrintHex(round, "k_sch", key[round]);
 
-            AddRoundKey(state, w[round]);
+            AddRoundKey(state, key[round]);
             PrintHex(round, "start", state);
         }
 
@@ -126,33 +163,25 @@ class AES128
 
         state = ShiftRows(state);
         PrintHex(round, "s_row", state);
-        PrintHex(round, "k_sch", w[round]);
+        PrintHex(round, "k_sch", key[round]);
 
-        AddRoundKey(state, w[round]);
+        AddRoundKey(state, key[round]);
         PrintHex(round, "output", state);
 
         return cast(ubyte[4*Nb]) ReverseBytes(WordsToBytes(state));
     }
  
-    unittest
-    {
-        auto m = cast(ubyte[16]) x"00112233445566778899aabbccddeeff";
-        auto k = cast(ubyte[16]) x"000102030405060708090a0b0c0d0e0f";
-        auto c = cast(ubyte[16]) x"69c4e0d86a7b0430d8cdb78070b4c55a";
-
-        assert(Encrypt(m, k) == c);
-    }
-
-    static ubyte[4*Nk] Decrypt(ubyte[4*Nb] c, ubyte[4*Nk] k)
+    public ubyte[4*Nb] Decrypt(ubyte[4*Nb] c)
     {
         State state = cast(State) BytesToWords(ReverseBytes(c));
-        Key key = cast(Key) BytesToWords(ReverseBytes(k));
+
+        //Key key = cast(Key) BytesToWords(ReverseBytes(k));
         PrintHex(0, "iinput", state);
 
-        Key[] w = KeyExpansion(key);
-        PrintHex(0, "ik_sch", w[Nr]);
+        //Key[] w = KeyExpansion(key);
+        PrintHex(0, "ik_sch", key[Nr]);
 
-        AddRoundKey(state, w[Nr]);
+        AddRoundKey(state, key[Nr]);
         PrintHex(0, "istart", state);
 
         uint round = 0;
@@ -164,8 +193,8 @@ class AES128
             InvSubBytes(state);
             PrintHex(round, "is_box", state);
 
-            PrintHex(round, "ik_sch", w[round]);
-            AddRoundKey(state, w[round]);
+            PrintHex(round, "ik_sch", key[round]);
+            AddRoundKey(state, key[round]);
             PrintHex(round, "is_add", state);
 
             state = InvMixColumns(state);
@@ -178,20 +207,12 @@ class AES128
         InvSubBytes(state);
         PrintHex(round, "is_box", state);
 
-        PrintHex(round, "ik_sch", w[0]);
-        AddRoundKey(state, w[0]);
+        PrintHex(round, "ik_sch", key[0]);
+        AddRoundKey(state, key[0]);
         PrintHex(round, "ioutput", state);
 
         return cast(ubyte[4*Nb]) ReverseBytes(WordsToBytes(state));
     }
-
-    unittest
-    {
-        auto c = cast(ubyte[16]) x"69c4e0d86a7b0430d8cdb78070b4c55a";
-        auto k = cast(ubyte[16]) x"000102030405060708090a0b0c0d0e0f";
-        auto m = cast(ubyte[16]) x"00112233445566778899aabbccddeeff";
-
-        assert(Decrypt(c, k) == m);    }
 
     private static void AddRoundKey(ref State s, ref Key k)
     {
@@ -269,8 +290,7 @@ class AES128
         assert(InvShiftRows(a) == c, "InvShiftRows");
     }
 
-    // Calculate funky stuff like {0e} * s etc. 
-    // {03} * s = ({02} ^ {01}) * s = ({02} * s) ^ ({01} ^ s) = xtime(s) ^ s
+    // Multiplication under GF(256)
     private static ubyte xtimes(ubyte a, ubyte b)
     {
         ubyte tmp = b;
@@ -367,8 +387,7 @@ class AES128
         assert(RotWord(0x3c4fcf09) == 0x093c4fcf);
     }
 
-    // TODO: THis is part of the state. Speaks for instantiating an object
-    private static Key[Nr+1] KeyExpansion(Key k)
+    private void KeyExpansion(Key k)
     {
         uint[Nb*(Nr+1)] w;
 
@@ -393,43 +412,113 @@ class AES128
         }
 
         // Rotate back words
-        Key[Nr + 1] keys;
         for (uint j = 0; j < Nr + 1; ++j)
-            keys[j] = [w[4*j+3], w[4*j+2], w[4*j+1], w[4*j]];
-        return keys;
+            key[j] = [w[4*j+3], w[4*j+2], w[4*j+1], w[4*j]];
+    }
+
+    private void KeyExpansion2(ubyte[4*Nk] k)
+    {
+        uint[Nb*(Nr+1)] w;
+
+        // Round key constants
+        static const uint[10] rCon = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36];
+
+        // First round key(s) is a copy of the original key (reverse bytes internally)
+        uint i = 0;
+        while (i < Nk)
+        {
+            w[i] = k[4*i] | k[4*i+1] << 8 | k[4*i+2] << 16 | k[4*i+3] << 24;
+            i++;
+        }// Still in reverse word order from xmm layout (to make indexing easy)
+
+        uint tmp;
+        i = Nk;
+        while (i < Nb*(Nr+1))
+        {
+            tmp = w[i-1];
+            if (i % Nk == 0)
+                tmp = SubWord(RotWord(tmp)) ^ rCon[i/Nk-1];
+            else if (Nk > 6 && i % Nk == 4)
+                tmp = SubWord(tmp);
+            w[i] = w[i - Nk] ^ tmp; // w[i - 4] is the same
+            ++i;
+        }
+
+        // Rotate back words (could remove this if we don't use Intel ordering)
+        for (uint j = 0; j < Nr + 1; ++j)
+            key[j] = [w[4*j+3], w[4*j+2], w[4*j+1], w[4*j]];
     }
 
     unittest
     {
         Key k  = [0x3c4fcf09, 0x8815f7ab, 0xa6d2ae28, 0x16157e2b];
         Key r1 = [0x05766c2a, 0x3939a323, 0xb12c5488, 0x17fefaa0];
-        Key[] res = KeyExpansion(k);
+        //Key[] res = KeyExpansion(k);
 
-        assert(res[0] == k);
-        assert(res[1] == r1);
+        //assert(res[0] == k);
+        //assert(res[1] == r1);
+    }
+
+    // Utility
+
+    private static ubyte[4*Nb] ReverseBytes(ubyte[4*Nb] b)
+    {
+        ubyte[4*Nb] res;
+        for (uint i = 0; i < 4*Nb; ++i)
+            res[i] = b[4*Nb-1-i];
+        return res;
+    }
+
+    private static ubyte[4*Nk] ReverseKeyBytes(ubyte[4*Nk] b)
+    {
+        ubyte[4*Nk] res;
+        for (uint i = 0; i < 4*Nk; ++i)
+            res[i] = b[4*Nk-1-i];
+        return res;
+    }
+
+    private static uint[4] BytesToWords(ubyte[4*Nb] b)
+    {
+        uint[4] str;
+        for (uint i = 0; i < 4; ++i)
+            str[i] = b[4*i] << 24 | b[4*i+1] << 16 | b[4*i+2] << 8 | b[4*i+3];
+        return str;
+    }
+
+    private static ubyte[4*Nb] WordsToBytes(uint[4] w)
+    {
+        ubyte[4*Nb] bytes;
+        foreach (uint i, uint n; w)
+        {
+            bytes[4*i] = (n & 0xff000000) >> 24;
+            bytes[4*i+1] = (n & 0x00ff0000) >> 16;
+            bytes[4*i+2] = (n & 0x0000ff00) >> 8;
+            bytes[4*i+3] = (n & 0x000000ff);
+        }
+        return bytes;
+    }
+
+    private static ubyte[4*Nk] KeyToBytes(Key k)
+    {
+        ubyte[4*Nk] bytes;
+        foreach (uint i, uint n; k)
+        {
+            bytes[4*i] = (n & 0xff000000) >> 24;
+            bytes[4*i+1] = (n & 0x00ff0000) >> 16;
+            bytes[4*i+2] = (n & 0x0000ff00) >> 8;
+            bytes[4*i+3] = (n & 0x000000ff);
+        }
+        return bytes;
+    }
+
+    private static Key BytesToKey(ubyte[4*Nk] b)
+    {
+        Key str;
+        for (uint i = 0; i < 4; ++i)
+            str[i] = b[4*i] << 24 | b[4*i+1] << 16 | b[4*i+2] << 8 | b[4*i+3];
+        return str;
     }
 }
-
-/*
-unittest
-{
-    writeln("Running AES test cases ...");
-    auto message = cast(ubyte[16]) x"00112233445566778899aabbccddeeff";
-    auto key     = cast(ubyte[16]) x"000102030405060708090a0b0c0d0e0f";
-    auto cipher  = cast(ubyte[16]) x"69c4e0d86a7b0430d8cdb78070b4c55a";
-
-    writeln("Message: "~byteToHexString(message));
-    writeln("Key:     "~byteToHexString(key));
-
-    assert( AES128.encrypt(message, key) == cipher );
-
-    writeln("");
-
-    assert( AES128.decrypt(cipher, key) == message );
-
-    writeln("Done!");
-}
-*/
 
 // -- Debug stuff --
 
