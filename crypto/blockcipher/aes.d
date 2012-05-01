@@ -1,9 +1,6 @@
 module crypto.blockcipher.aes;
 
 import std.stdio;
-import std.conv;
-import std.format;
-import std.algorithm;
 
 /* 
  * AES standard: http://csrc.nist.gov/publications/fips/fips197/fips-197.pdf
@@ -66,11 +63,6 @@ class AES256 : AES!(4, 8, 14)
     }
 }
 
-/*
- * Nk (key length in words)
- * Nb (block length in words)
- * Nr (number of rounds)
- */
 class AES(uint Nb, uint Nk, uint Nr)
 if ((Nb == 4 && Nk == 4 && Nr == 10) || 
     (Nb == 4 && Nk == 6 && Nr == 12) ||
@@ -122,7 +114,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
 
     public this(ubyte[4*Nk] k)
     {
-        KeyExpansion2( k );
+        KeyExpansion( k );
     }
     
     public ubyte[4*Nb] Encrypt(ubyte[4*Nb] message)
@@ -175,10 +167,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
     {
         State state = cast(State) BytesToWords(ReverseBytes(c));
 
-        //Key key = cast(Key) BytesToWords(ReverseBytes(k));
         PrintHex(0, "iinput", state);
-
-        //Key[] w = KeyExpansion(key);
         PrintHex(0, "ik_sch", key[Nr]);
 
         AddRoundKey(state, key[Nr]);
@@ -239,8 +228,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         SubBytes(s, inv_sbox);
     }
 
-    /*
-     * Independent on byte ordering.
+    /* Independent on byte ordering.
      */
     unittest
     {
@@ -387,36 +375,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         assert(RotWord(0x3c4fcf09) == 0x093c4fcf);
     }
 
-    private void KeyExpansion(Key k)
-    {
-        uint[Nb*(Nr+1)] w;
-
-        // Round key constants
-        static const uint[10] rCon = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36];
-
-        // First round key(s) is a copy of the original key
-        w[0] = k[3];
-        w[1] = k[2];
-        w[2] = k[1];
-        w[3] = k[0];// Reverse order from xmm layout (to make indexing easy)
-        
-        uint tmp;
-        uint i = Nk;
-        while (i < Nb*(Nr+1))
-        {
-            tmp = w[i-1];
-            if (i % Nk == 0)
-                tmp = SubWord(RotWord(tmp)) ^ rCon[i/Nk-1];
-            w[i] = w[i - Nk] ^ tmp; // w[i - 4] is the same
-            ++i;
-        }
-
-        // Rotate back words
-        for (uint j = 0; j < Nr + 1; ++j)
-            key[j] = [w[4*j+3], w[4*j+2], w[4*j+1], w[4*j]];
-    }
-
-    private void KeyExpansion2(ubyte[4*Nk] k)
+    private void KeyExpansion(ubyte[4*Nk] k)
     {
         uint[Nb*(Nr+1)] w;
 
@@ -438,9 +397,10 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
             tmp = w[i-1];
             if (i % Nk == 0)
                 tmp = SubWord(RotWord(tmp)) ^ rCon[i/Nk-1];
-            else if (Nk > 6 && i % Nk == 4)
-                tmp = SubWord(tmp);
-            w[i] = w[i - Nk] ^ tmp; // w[i - 4] is the same
+            static if (Nk > 6)
+                if (i % Nk == 4)
+                    tmp = SubWord(tmp);
+            w[i] = w[i - Nk] ^ tmp;
             ++i;
         }
 
@@ -449,31 +409,14 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
             key[j] = [w[4*j+3], w[4*j+2], w[4*j+1], w[4*j]];
     }
 
-    unittest
-    {
-        Key k  = [0x3c4fcf09, 0x8815f7ab, 0xa6d2ae28, 0x16157e2b];
-        Key r1 = [0x05766c2a, 0x3939a323, 0xb12c5488, 0x17fefaa0];
-        //Key[] res = KeyExpansion(k);
 
-        //assert(res[0] == k);
-        //assert(res[1] == r1);
-    }
 
     // Utility
-
     private static ubyte[4*Nb] ReverseBytes(ubyte[4*Nb] b)
     {
         ubyte[4*Nb] res;
         for (uint i = 0; i < 4*Nb; ++i)
             res[i] = b[4*Nb-1-i];
-        return res;
-    }
-
-    private static ubyte[4*Nk] ReverseKeyBytes(ubyte[4*Nk] b)
-    {
-        ubyte[4*Nk] res;
-        for (uint i = 0; i < 4*Nk; ++i)
-            res[i] = b[4*Nk-1-i];
         return res;
     }
 
@@ -496,27 +439,6 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
             bytes[4*i+3] = (n & 0x000000ff);
         }
         return bytes;
-    }
-
-    private static ubyte[4*Nk] KeyToBytes(Key k)
-    {
-        ubyte[4*Nk] bytes;
-        foreach (uint i, uint n; k)
-        {
-            bytes[4*i] = (n & 0xff000000) >> 24;
-            bytes[4*i+1] = (n & 0x00ff0000) >> 16;
-            bytes[4*i+2] = (n & 0x0000ff00) >> 8;
-            bytes[4*i+3] = (n & 0x000000ff);
-        }
-        return bytes;
-    }
-
-    private static Key BytesToKey(ubyte[4*Nk] b)
-    {
-        Key str;
-        for (uint i = 0; i < 4; ++i)
-            str[i] = b[4*i] << 24 | b[4*i+1] << 16 | b[4*i+2] << 8 | b[4*i+3];
-        return str;
     }
 }
 
