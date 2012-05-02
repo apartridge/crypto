@@ -6,8 +6,8 @@ import std.stdio;
  * AES standard: http://csrc.nist.gov/publications/fips/fips197/fips-197.pdf
  * Intel document: http://software.intel.com/file/20457
  *
- * Plaintext: 128 bits
- * Ciphertext: 128 bits
+ * Plaintext: 128 bit
+ * Ciphertext: 128 bit
  * Keys: 128, 192 or 256 bit
  *
  */
@@ -63,7 +63,7 @@ class AES256 : AES!(4, 8, 14)
     }
 }
 
-class AES(uint Nb, uint Nk, uint Nr)
+abstract class AES(uint Nb, uint Nk, uint Nr)
 if ((Nb == 4 && Nk == 4 && Nr == 10) || 
     (Nb == 4 && Nk == 6 && Nr == 12) ||
     (Nb == 4 && Nk == 8 && Nr == 14))
@@ -111,6 +111,11 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
         0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d
     ];
+
+    public const uint blockSize() @property
+    {
+        return Nb*4;
+    }
 
     public this(ubyte[4*Nk] k)
     {
@@ -161,7 +166,25 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
 
     private static void addRoundKey(ref State s, ref Key k)
     {
-        foreach (uint i, ref uint n; s) n ^= k[i];
+        version(D_InlineAsm_X86)
+        {
+            auto state_ptr = s.ptr;
+            auto key_ptr = k.ptr;
+            asm
+            {
+                mov EAX, state_ptr;
+                mov ECX, key_ptr;
+                movupd XMM1, [EAX];
+                movupd XMM2, [ECX];
+                xorpd XMM1, XMM2;
+                movupd [EAX], XMM1;
+                mov state_ptr, EAX;
+            }
+        }
+        else
+        {
+            foreach (uint i, ref uint n; s) n ^= k[i];
+        }
     }
 
     unittest {
