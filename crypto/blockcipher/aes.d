@@ -119,46 +119,22 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
     
     public ubyte[4*Nb] Encrypt(ubyte[4*Nb] message)
     {
-        ubyte[4*Nb] m = message[0 .. 4*Nb];
-
-        // Shuffle around bytes to conform to Intel standard
-        State state = cast(State) BytesToWords(ReverseBytes(m));
-
-        //Key key = cast(Key) BytesToWords(ReverseBytes(k));
-        PrintHex(0, "input", state);
-
-        //Key[] w = KeyExpansion(key);
-        PrintHex(0, "k_sch", key[0]);
+        // Shuffle around bytes to conform to Intel little endian standard
+        // Q: Should we assume message[0] byte is the least significant?
+        State state = cast(State) BytesToWords(ReverseBytes(message));
 
         AddRoundKey(state, key[0]);
-        PrintHex(0, "start", state);
-
         uint round = 0;
         while (round++ < Nr - 1)
         {
             SubBytes(state);
-            PrintHex(round, "s_box", state);
-
             state = ShiftRows(state);
-            PrintHex(round, "s_row", state);
-
             state = MixColumns(state);
-            PrintHex(round, "m_col", state);
-            PrintHex(round, "k_sch", key[round]);
-
             AddRoundKey(state, key[round]);
-            PrintHex(round, "start", state);
         }
-
         SubBytes(state);
-        PrintHex(round, "s_box", state);
-
         state = ShiftRows(state);
-        PrintHex(round, "s_row", state);
-        PrintHex(round, "k_sch", key[round]);
-
         AddRoundKey(state, key[round]);
-        PrintHex(round, "output", state);
 
         return cast(ubyte[4*Nb]) ReverseBytes(WordsToBytes(state));
     }
@@ -167,38 +143,18 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
     {
         State state = cast(State) BytesToWords(ReverseBytes(c));
 
-        PrintHex(0, "iinput", state);
-        PrintHex(0, "ik_sch", key[Nr]);
-
         AddRoundKey(state, key[Nr]);
-        PrintHex(0, "istart", state);
-
         uint round = 0;
         for (round = Nr - 1; round > 0; --round)
         {
             state = InvShiftRows(state);
-            PrintHex(round, "is_row", state);
-
             InvSubBytes(state);
-            PrintHex(round, "is_box", state);
-
-            PrintHex(round, "ik_sch", key[round]);
             AddRoundKey(state, key[round]);
-            PrintHex(round, "is_add", state);
-
             state = InvMixColumns(state);
-            PrintHex(round, "istart", state);
         }
-
         state = InvShiftRows(state);
-        PrintHex(round, "is_row", state);
-
         InvSubBytes(state);
-        PrintHex(round, "is_box", state);
-
-        PrintHex(round, "ik_sch", key[0]);
         AddRoundKey(state, key[0]);
-        PrintHex(round, "ioutput", state);
 
         return cast(ubyte[4*Nb]) ReverseBytes(WordsToBytes(state));
     }
@@ -279,12 +235,13 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
     }
 
     // Multiplication under GF(256)
+    // Could perhaps do lookup for this? Needs benchmarking
     private static ubyte xtimes(ubyte a, ubyte b)
     {
         ubyte tmp = b;
         ubyte res = 0x0;
         if ((a & 0x01) != 0) res = b;
-        foreach (uint c; [0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80]) { // TODO, add 0x01 ?
+        foreach (uint c; [0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80]) {
             tmp = xtime(tmp); // b * { 02, 04, 08, 10, 20, 40, 80 }
             if ((a & c) != 0) {
                 res ^= tmp;
@@ -408,8 +365,6 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         for (uint j = 0; j < Nr + 1; ++j)
             key[j] = [w[4*j+3], w[4*j+2], w[4*j+1], w[4*j]];
     }
-
-
 
     // Utility
     private static ubyte[4*Nb] ReverseBytes(ubyte[4*Nb] b)
