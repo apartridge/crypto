@@ -252,8 +252,8 @@ class AES128
     unittest {
         ubyte[4][4] state = toState(cast(ubyte[16])x"63cab7040953d051cd60e0e7ba70e18c");
         ubyte[4][4] res   = toState(cast(ubyte[16])x"6353e08c0960e104cd70b751bacad0e7");
-        writeln(stateToString(state));
-        writeln(stateToString(res));
+       // writeln(stateToString(state));
+       // writeln(stateToString(res));
         assert( shiftRows(state) == res );
     }
 
@@ -413,6 +413,7 @@ class AES128
     // -- End debug stuff --
 }
 
+/* Stop garbaging the output mr melhus!
 
 unittest
 {
@@ -431,7 +432,7 @@ unittest
     assert( AES128.decrypt(cipher, key) == message );
 
     writeln("Done!");
-}
+}*/
 
 auto byteToHexString(ubyte[] s) // 0..256
 {

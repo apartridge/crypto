@@ -7,9 +7,12 @@ Implements RFC 3174 - US Secure Hash Algorithm 1 (SHA1)
 public import crypto.hash.base;
 private import std.bitmanip;
 private import crypto.hash.merkle_damgaard;
-private import std.stdio : writeln;
 
-class SHA1 : MerkleDamgaard!(20, 64, 8) 
+version(unittest){
+	private import std.stdio : writeln;
+}
+
+class SHA1 : MerkleDamgaard!(20, uint, 20, 64, 8) 
 {
 	protected void setInitialVector () {
 		h[0] = 0x67452301;
@@ -35,7 +38,7 @@ class SHA1 : MerkleDamgaard!(20, 64, 8)
 
 		foreach(i; 16..80)
 		{
-			w[i] = circularRotLeft!1(w[i-3] ^ w[i-8] ^ w[i-14] ^ w[i-16]);
+			w[i] = rotl(w[i-3] ^ w[i-8] ^ w[i-14] ^ w[i-16], 1);
 		}
 
 		
@@ -65,10 +68,10 @@ class SHA1 : MerkleDamgaard!(20, 64, 8)
 				k = 0xca62c1d6;
 			}
 
-			uint temp = circularRotLeft!5(a) + f + e + k + w[i];
+			uint temp = rotl(a, 5) + f + e + k + w[i];
 			e = d;
 			d = c;
-			c = circularRotLeft!30(b);
+			c = rotl(b, 30);
 			b = a;
 			a = temp;
 
@@ -80,26 +83,6 @@ class SHA1 : MerkleDamgaard!(20, 64, 8)
 		h[3] += d;
 		h[4] += e;
 
-	}
-
-	protected ubyte[8] messageLengthAppendix(int messageLengthBytes)
-	{
-		return nativeToBigEndian!ulong(messageLengthBytes << 3);
-	}
-
-	protected override ubyte[20] finalize(ref uint[5] hi)
-	{
-		uint[5] o = hi;
-		version(LittleEndian)
-		{
-			o[0] = swapEndian(hi[0]);
-			o[1] = swapEndian(hi[1]);
-			o[2] = swapEndian(hi[2]);
-			o[3] = swapEndian(hi[3]);
-			o[4] = swapEndian(hi[4]);
-		}
-
-		return cast(ubyte[20]) o;
 	}
 
 }
