@@ -6,9 +6,9 @@ import std.stdio;
 
 int main(string[] argv)
 {
-	auto sha1 = new SHA1;
-	sha1.put("A");
-	writeln(sha1.digestHex());
+    auto sha1 = new SHA1;
+    sha1.put("A");
+    writeln(sha1.digestHex());
 
 
     auto aes = new AES128( cast(ubyte[16]) x"f6cc34cdc555c5418254260203ad3ecd" );
@@ -27,7 +27,7 @@ int main(string[] argv)
 
 
 
-	return 0;
+    return 0;
 }
 
 
