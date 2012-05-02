@@ -12,7 +12,7 @@ int main(string[] argv)
 
 
     auto aes = new AES128( cast(ubyte[16]) x"f6cc34cdc555c5418254260203ad3ecd" );
-    auto message = aes.Encrypt(cast(ubyte[16]) x"7483765489aab73affeedd88aebfc876" );
+    auto message = aes.encrypt(cast(ubyte[16]) x"7483765489aab73affeedd88aebfc876" );
     write("AES: "); writeln(message); // 9c 33 df 29 3e d6 55 b5 f0 a6 1e bc 70 5f 6f 5a
 
 

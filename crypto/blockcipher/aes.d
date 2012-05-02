@@ -24,8 +24,8 @@ class AES128 : AES!(4, 4, 10)
 
         auto aes = new AES128(key);
 
-        assert(aes.Encrypt(message) == cipher);
-        assert(aes.Decrypt(cipher) == message);
+        assert(aes.encrypt(message) == cipher);
+        assert(aes.decrypt(cipher) == message);
     }
 }
 
@@ -41,8 +41,8 @@ class AES192 : AES!(4, 6, 12)
 
         auto aes = new AES192(key);
 
-        assert(aes.Encrypt(message) == cipher);
-        assert(aes.Decrypt(cipher) == message);
+        assert(aes.encrypt(message) == cipher);
+        assert(aes.decrypt(cipher) == message);
     }
 }
 
@@ -58,8 +58,8 @@ class AES256 : AES!(4, 8, 14)
 
         auto aes = new AES256(key);
 
-        assert(aes.Encrypt(message) == cipher);
-        assert(aes.Decrypt(cipher) == message);
+        assert(aes.encrypt(message) == cipher);
+        assert(aes.decrypt(cipher) == message);
     }
 }
 
@@ -114,52 +114,52 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
 
     public this(ubyte[4*Nk] k)
     {
-        KeyExpansion( k );
+        keyExpansion( k );
     }
     
-    public ubyte[4*Nb] Encrypt(ubyte[4*Nb] message)
+    public ubyte[4*Nb] encrypt(ubyte[4*Nb] message)
     {
         // Shuffle around bytes to conform to Intel little endian standard
-        // Q: Should we assume message[0] byte is the least significant?
-        State state = cast(State) BytesToWords(ReverseBytes(message));
+        // Possible to use sse instructions with 128 bit registers
+        State state = cast(State) bytesToWords(reverseBytes(message));
 
-        AddRoundKey(state, key[0]);
+        addRoundKey(state, key[0]);
         uint round = 0;
         while (round++ < Nr - 1)
         {
-            SubBytes(state);
-            state = ShiftRows(state);
-            state = MixColumns(state);
-            AddRoundKey(state, key[round]);
+            subBytes(state);
+            state = shiftRows(state);
+            state = mixColumns(state);
+            addRoundKey(state, key[round]);
         }
-        SubBytes(state);
-        state = ShiftRows(state);
-        AddRoundKey(state, key[round]);
+        subBytes(state);
+        state = shiftRows(state);
+        addRoundKey(state, key[round]);
 
-        return cast(ubyte[4*Nb]) ReverseBytes(WordsToBytes(state));
+        return cast(ubyte[4*Nb]) reverseBytes(wordsToBytes(state));
     }
  
-    public ubyte[4*Nb] Decrypt(ubyte[4*Nb] c)
+    public ubyte[4*Nb] decrypt(ubyte[4*Nb] c)
     {
-        State state = cast(State) BytesToWords(ReverseBytes(c));
+        State state = cast(State) bytesToWords(reverseBytes(c));
 
-        AddRoundKey(state, key[Nr]);
+        addRoundKey(state, key[Nr]);
         uint round = 0;
         for (round = Nr - 1; round > 0; --round)
         {
-            state = InvShiftRows(state);
-            InvSubBytes(state);
-            AddRoundKey(state, key[round]);
-            state = InvMixColumns(state);
+            state = invShiftRows(state);
+            invSubBytes(state);
+            addRoundKey(state, key[round]);
+            state = invMixColumns(state);
         }
-        state = InvShiftRows(state);
-        InvSubBytes(state);
-        AddRoundKey(state, key[0]);
+        state = invShiftRows(state);
+        invSubBytes(state);
+        addRoundKey(state, key[0]);
 
-        return cast(ubyte[4*Nb]) ReverseBytes(WordsToBytes(state));
+        return cast(ubyte[4*Nb]) reverseBytes(wordsToBytes(state));
     }
 
-    private static void AddRoundKey(ref State s, ref Key k)
+    private static void addRoundKey(ref State s, ref Key k)
     {
         foreach (uint i, ref uint n; s) n ^= k[i];
     }
@@ -168,38 +168,36 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         State a = [0x00112233, 0x44556677, 0x8899aabb, 0xccddeeff];
         State b = [0x00102030, 0x40506070, 0x8090a0b0, 0xc0d0e0f0];
         Key k   = [0x00010203, 0x04050607, 0x08090a0b, 0x0c0d0e0f];
-        AddRoundKey(a, k);
+        addRoundKey(a, k);
         assert(a == b, "AddRoundKey");
     }
 
-    private static void SubBytes(ref State s, ref const ubyte[] b = sbox)
+    private static void subBytes(ref State s, ref const ubyte[] b = sbox)
     {
         foreach (ref uint i; s) 
             i = b[i >> 24] << 24 | b[(i & 0x00ff0000) >> 16] << 16 | 
                 b[(i & 0x0000ff00) >> 8] << 8 | b[i & 0x000000ff];
     }
 
-    private static void InvSubBytes(ref State s)
+    private static void invSubBytes(ref State s)
     {
-        SubBytes(s, inv_sbox);
+        subBytes(s, inv_sbox);
     }
 
-    /* Independent on byte ordering.
-     */
     unittest
     {
         State a = [0x73744765, 0x63535465, 0x5d5b5672, 0x7b746f5d];
         State b = [0x8f92a04d, 0xfbed204d, 0x4c39b140, 0x2192a84c];
         State c = [0x73744765, 0x63535465, 0x5d5b5672, 0x7b746f5d];
 
-        SubBytes(a);
+        subBytes(a);
         assert(a == b, "SubBytes");
 
-        InvSubBytes(b);
+        invSubBytes(b);
         assert(b == c, "InvSubBytes");
     }
 
-    private static State ShiftRows(State s)
+    private static State shiftRows(State s)
     {
         State sp = [0, 0, 0, 0];
         foreach (uint i, uint n; s)
@@ -212,7 +210,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         return sp;
     }
     
-    private static State InvShiftRows(State s)
+    private static State invShiftRows(State s)
     {
         State sp = [0, 0, 0, 0];
         foreach (uint i, uint n; s)
@@ -230,8 +228,8 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         State b = [0x73744765, 0x63535465, 0x5d5b5672, 0x7b746f5d];
         State c = [0x5d745665, 0x7b536f65, 0x735b4772, 0x6374545d];
 
-        assert(ShiftRows(a) == b, "ShiftRows");
-        assert(InvShiftRows(a) == c, "InvShiftRows");
+        assert(shiftRows(a) == b, "ShiftRows");
+        assert(invShiftRows(a) == c, "InvShiftRows");
     }
 
     // Multiplication under GF(256)
@@ -256,7 +254,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         return a;
     };
 
-    private static State MixColumns(State s)
+    private static State mixColumns(State s)
     {
         State sp = [0, 0, 0, 0];
         for (uint i = 0; i < 4; ++i)
@@ -273,7 +271,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         return sp;
     }
 
-    private static State InvMixColumns(State s)
+    private static State invMixColumns(State s)
     {
         State sp = [0, 0, 0, 0];
         for (uint i = 0; i < 4; ++i)
@@ -302,14 +300,14 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
 
         State a = [0x627a6f66, 0x44b109c8, 0x2b18330a, 0x81c3b3e5];
         State b = [0x7b5b5465, 0x73745665, 0x63746f72, 0x5d53475d];
-        assert(MixColumns(a) == b, "MixColumns");
+        assert(mixColumns(a) == b, "MixColumns");
 
         State c = [0x8dcab9dc, 0x035006bc, 0x8f57161e, 0x00cafd8d];
         State d = [0xd635a667, 0x928b5eae, 0xeec9cc3b, 0xc55f5777];
-        assert(InvMixColumns(c) == d, "InvMixColumns");
+        assert(invMixColumns(c) == d, "InvMixColumns");
     }
 
-    private static uint SubWord(uint w)
+    private static uint subWord(uint w)
     {
         return sbox[(w & 0xff000000) >> 24] << 24 |
                sbox[(w & 0x00ff0000) >> 16] << 16 |
@@ -319,20 +317,20 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
 
     unittest
     {
-        assert(SubWord(0x73744765) == 0x8f92a04d);
+        assert(subWord(0x73744765) == 0x8f92a04d);
     }
 
-    private static uint RotWord(uint w)
+    private static uint rotWord(uint w)
     {
         return (w >> 8) | (w << 24);
     }
 
     unittest
     {
-        assert(RotWord(0x3c4fcf09) == 0x093c4fcf);
+        assert(rotWord(0x3c4fcf09) == 0x093c4fcf);
     }
 
-    private void KeyExpansion(ubyte[4*Nk] k)
+    private void keyExpansion(ubyte[4*Nk] k)
     {
         uint[Nb*(Nr+1)] w;
 
@@ -340,12 +338,13 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         static const uint[10] rCon = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36];
 
         // First round key(s) is a copy of the original key (reverse bytes internally)
+        // Still in reverse word order from xmm layout (to make indexing easy)
         uint i = 0;
         while (i < Nk)
         {
             w[i] = k[4*i] | k[4*i+1] << 8 | k[4*i+2] << 16 | k[4*i+3] << 24;
             i++;
-        }// Still in reverse word order from xmm layout (to make indexing easy)
+        }
 
         uint tmp;
         i = Nk;
@@ -353,10 +352,10 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         {
             tmp = w[i-1];
             if (i % Nk == 0)
-                tmp = SubWord(RotWord(tmp)) ^ rCon[i/Nk-1];
+                tmp = subWord(rotWord(tmp)) ^ rCon[i/Nk-1];
             static if (Nk > 6)
                 if (i % Nk == 4)
-                    tmp = SubWord(tmp);
+                    tmp = subWord(tmp);
             w[i] = w[i - Nk] ^ tmp;
             ++i;
         }
@@ -367,7 +366,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
     }
 
     // Utility
-    private static ubyte[4*Nb] ReverseBytes(ubyte[4*Nb] b)
+    private static ubyte[4*Nb] reverseBytes(ubyte[4*Nb] b)
     {
         ubyte[4*Nb] res;
         for (uint i = 0; i < 4*Nb; ++i)
@@ -375,7 +374,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         return res;
     }
 
-    private static uint[4] BytesToWords(ubyte[4*Nb] b)
+    private static uint[4] bytesToWords(ubyte[4*Nb] b)
     {
         uint[4] str;
         for (uint i = 0; i < 4; ++i)
@@ -383,7 +382,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         return str;
     }
 
-    private static ubyte[4*Nb] WordsToBytes(uint[4] w)
+    private static ubyte[4*Nb] wordsToBytes(uint[4] w)
     {
         ubyte[4*Nb] bytes;
         foreach (uint i, uint n; w)
@@ -399,7 +398,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
 
 // -- Debug stuff --
 
-private static void PrintHex(uint round, string s, uint[] b)
+private static void printHex(uint round, string s, uint[] b)
 {
     write("round["); write(round); write("]."~s~"\t");
     for (uint i = 0; i < b.length; ++i)
