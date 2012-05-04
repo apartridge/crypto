@@ -1,66 +1,87 @@
 module crypto.mode.ecb;
 
 import crypto.blockcipher.aes;
-import std.file, std.stdio, std.array;
+import std.file, std.stdio, std.array, std.stream;
 
-class ECB
+
+public interface SymmetricScheme
 {
-    private AES128 blockcipher;
+    public void encrypt(InputStream input, OutputStream output);
+    public void decrypt(InputStream input, OutputStream output);
+}
 
-    this(AES128 cipher)
+class ECB : SymmetricScheme
+{
+    private BlockCipher blockCipher;
+
+    this(BlockCipher bc)
     {
-        blockcipher = cipher;
+        blockCipher = bc;
     }
 
-    private void transform(string inputFilename, string outputFilename, bool encrypt = true)
+    public void encrypt(InputStream input, OutputStream output)
     {
-        ubyte[16] padding = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
-        const uint blockSize = 16; //blockcipher.blockSize();
+        const uint blockSize = blockCipher.blockSize();
+        ubyte[] inBuffer  = new ubyte[blockSize];
+        ubyte[] outBuffer = new ubyte[blockSize];
+        uint bytesRead;
 
-        // Wipe file
-        std.file.write(outputFilename, "");
-
-        // Read input file (todo: stream or something, not keep
-        // everything in memory)
-        auto bytes = cast(ubyte[]) read(inputFilename);
-
-        ubyte[blockSize] block;
-        uint count = 0;
-        bool done = false;
-
-        // Loop through each block
-        while ((bytes.length - count) >= blockSize)
+        // Encrypt all whole blocks
+        while ((bytesRead = input.read(inBuffer)) == blockSize)
         {
-            block = bytes[count .. count+blockSize];
-            ubyte[] cipher;
-            if (encrypt)
-                cipher = blockcipher.encrypt(block);
-            else
-                cipher = blockcipher.decrypt(block);
-            std.file.append(outputFilename, cipher);
-            count += blockSize;
+            blockCipher.encrypt(inBuffer, outBuffer);
+            output.write(outBuffer);
         }
 
-        // Pad the last block
-        if ((bytes.length - count) > 0)
+        // Pad last block with number of padding bytes (PKCS#5)
+        ubyte paddingByte = cast(ubyte)(blockSize - bytesRead);
+        for (uint i = bytesRead; i < blockSize; ++i)
+            inBuffer[i] = paddingByte;
+        blockCipher.encrypt(inBuffer, outBuffer);
+        output.write(outBuffer);
+    }
+    
+    public void decrypt(InputStream input, OutputStream output)
+    {
+        const uint blockSize = blockCipher.blockSize();
+        ubyte[] inBuffer  = new ubyte[blockSize];
+        ubyte[] outBuffer = new ubyte[blockSize];
+
+        while (input.read(inBuffer))
         {
-            block = bytes[count .. $] ~ padding[0 .. blockSize-(bytes.length-count)];
-            ubyte[] cipher;
-            if (encrypt)
-                cipher = blockcipher.encrypt(block);
-            else
-                cipher = blockcipher.decrypt(block);
-            std.file.append(outputFilename, cipher);
+            blockCipher.decrypt(inBuffer, outBuffer);
+
+            // Remove padding in last block
+            if (input.eof())
+            {
+                outBuffer = outBuffer[0 .. (blockSize-outBuffer[blockSize-1])];
+            }
+            output.write(outBuffer);
         }
     }
 
-    public void encryptFile(string inputFilename, string outputFilename)
+    unittest
     {
-        transform(inputFilename, outputFilename);
-    }
+        auto cipher = new AES128(cast(ubyte[16]) x"000102030405060708090a0b0c0d0e0f");
+        auto scheme = new ECB(cipher);
 
-    public void decryptFile(string inputFilename, string outputFilename)
-    {
-        transform(inputFilename, outputFilename, false);
+        auto plaintext  = cast(ubyte[]) "The quick brown fox jumped over the lazy dog";
+        auto ciphertext = cast(ubyte[]) x"f7021c01de43c8147cd2477a7eba55b3 2a2fd906badb2adf811766d2aeb5cdfd 3fbc811e6a3361dadde672fad4bf4ad4";
+        
+        // Encrypt
+        auto inputBuffer = new MemoryStream(plaintext);
+        auto outputBuffer = new MemoryStream();
+
+        scheme.encrypt(inputBuffer, outputBuffer);
+        auto res = cast(ubyte[]) (outputBuffer.toString());
+        assert( res == ciphertext );
+        
+        // Decrypt
+        inputBuffer = new MemoryStream(ciphertext);
+        outputBuffer = new MemoryStream();
+
+        scheme.decrypt(inputBuffer, outputBuffer);
+        res = cast(ubyte[]) (outputBuffer.toString());
+        assert( res == plaintext );
     }
 }

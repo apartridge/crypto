@@ -1,6 +1,16 @@
 module crypto.blockcipher.aes;
 
-import std.stdio;
+import std.stdio, std.bitmanip;
+
+
+public interface BlockCipher
+{
+    public void encrypt(ubyte[] message, ref ubyte[] cipher);
+    public void decrypt(ubyte[] cipher, ref ubyte[] message);
+
+    @property public const uint blockSize();
+}
+
 
 /* 
  * AES standard: http://csrc.nist.gov/publications/fips/fips197/fips-197.pdf
@@ -21,11 +31,15 @@ class AES128 : AES!(4, 4, 10)
         auto message = cast(ubyte[16]) x"00112233445566778899aabbccddeeff";
         auto key     = cast(ubyte[16]) x"000102030405060708090a0b0c0d0e0f";
         auto cipher  = cast(ubyte[16]) x"69c4e0d86a7b0430d8cdb78070b4c55a";
+        ubyte[] buffer = new ubyte[16];
 
         auto aes = new AES128(key);
 
-        assert(aes.encrypt(message) == cipher);
-        assert(aes.decrypt(cipher) == message);
+        aes.encrypt(message, buffer);
+        assert(buffer == cipher);
+
+        aes.decrypt(cipher, buffer);
+        assert(buffer == message);
     }
 }
 
@@ -38,11 +52,15 @@ class AES192 : AES!(4, 6, 12)
         auto message = cast(ubyte[16]) x"00112233445566778899aabbccddeeff";
         auto key     = cast(ubyte[24]) x"000102030405060708090a0b0c0d0e0f1011121314151617";
         auto cipher  = cast(ubyte[16]) x"dda97ca4864cdfe06eaf70a0ec0d7191";
+        ubyte[] buffer = new ubyte[16];
 
         auto aes = new AES192(key);
 
-        assert(aes.encrypt(message) == cipher);
-        assert(aes.decrypt(cipher) == message);
+        aes.encrypt(message, buffer);
+        assert(buffer == cipher);
+
+        aes.decrypt(cipher, buffer);
+        assert(buffer == message);
     }
 }
 
@@ -55,18 +73,22 @@ class AES256 : AES!(4, 8, 14)
         auto message = cast(ubyte[16]) x"00112233445566778899aabbccddeeff";
         auto key     = cast(ubyte[32]) x"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
         auto cipher  = cast(ubyte[16]) x"8ea2b7ca516745bfeafc49904b496089";
+        ubyte[] buffer = new ubyte[16];
 
         auto aes = new AES256(key);
 
-        assert(aes.encrypt(message) == cipher);
-        assert(aes.decrypt(cipher) == message);
+        aes.encrypt(message, buffer);
+        assert(buffer == cipher);
+
+        aes.decrypt(cipher, buffer);
+        assert(buffer == message);
     }
 }
 
 abstract class AES(uint Nb, uint Nk, uint Nr)
 if ((Nb == 4 && Nk == 4 && Nr == 10) || 
     (Nb == 4 && Nk == 6 && Nr == 12) ||
-    (Nb == 4 && Nk == 8 && Nr == 14))
+    (Nb == 4 && Nk == 8 && Nr == 14)) : BlockCipher
 {
     alias uint[Nb] State;
     alias uint[Nb] Key;
@@ -112,7 +134,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d
     ];
 
-    public const uint blockSize() @property
+    @property public const uint blockSize() 
     {
         return Nb*4;
     }
@@ -121,8 +143,8 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
     {
         keyExpansion( k );
     }
-    
-    public ubyte[4*Nb] encrypt(ubyte[4*Nb] message)
+
+    public void encrypt(ubyte[] message, ref ubyte[] cipher)
     {
         // Shuffle around bytes to conform to Intel little endian standard
         // Possible to use sse instructions with 128 bit registers
@@ -141,12 +163,13 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         state = shiftRows(state);
         addRoundKey(state, key[round]);
 
-        return cast(ubyte[4*Nb]) reverseBytes(wordsToBytes(state));
+        foreach (uint i, ubyte b; reverseBytes(wordsToBytes(state)))
+            cipher[i] = b;
     }
  
-    public ubyte[4*Nb] decrypt(ubyte[4*Nb] c)
+    public void decrypt(ubyte[] cipher, ref ubyte[] message)
     {
-        State state = cast(State) bytesToWords(reverseBytes(c));
+        State state = cast(State) bytesToWords(reverseBytes(cipher));
 
         addRoundKey(state, key[Nr]);
         uint round = 0;
@@ -161,7 +184,8 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         invSubBytes(state);
         addRoundKey(state, key[0]);
 
-        return cast(ubyte[4*Nb]) reverseBytes(wordsToBytes(state));
+        foreach (uint i, ubyte b; reverseBytes(wordsToBytes(state)))
+            message[i] = b;
     }
 
     private static void addRoundKey(ref State s, ref Key k)
@@ -389,7 +413,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
     }
 
     // Utility
-    private static ubyte[4*Nb] reverseBytes(ubyte[4*Nb] b)
+    private static ubyte[4*Nb] reverseBytes(ubyte[] b)
     {
         ubyte[4*Nb] res;
         for (uint i = 0; i < 4*Nb; ++i)
