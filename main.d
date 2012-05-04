@@ -5,23 +5,26 @@ import crypto.blockcipher.aes;
 import crypto.mode.ecb;
 
 import std.stdio, std.algorithm, std.getopt, std.stream, std.cstream;
+import std.datetime;
 
-/*
+/***
  * Simple command line support for accessing functions.
  * Leaving out --in or --out will default to stdin and stdout.
  *
  * >crypto --hash sha1 -in <file>
  * >crypto --enc aes-128-ecb --in <file1> --out <file2> --key <key>
  * >crypto --dec aes-128-ecb --in <file2> --out <file1> --key <key>
+ * >crypto --benchmark aes-128-ecb --in "test/bbt.avi" --out "test/bbt.avi.enc" --key 000102030405060708090a0b0c0d0e0f
 */
 
 void execute(string[] args)
 {
-    string enc, dec, hash, input, output, key;
+    string enc, dec, hash, benchmark, input, output, key;
     getopt(args,
            "enc", &enc,
            "dec", &dec,
            "hash", &hash,
+           "benchmark", &benchmark,
            "in", &input,
            "out", &output,
            "key", &key
@@ -31,9 +34,9 @@ void execute(string[] args)
     InputStream inStream = din;
     OutputStream outStream = dout;
     if (input != null)
-        inStream = new std.stream.File(input);
+        inStream = new BufferedFile(input);
     if (output != null)
-        outStream = new std.stream.File(output, FileMode.Out);
+        outStream = new BufferedFile(output, FileMode.Out);
     
     // Encrypt
     if (enc != null)
@@ -69,6 +72,25 @@ void execute(string[] args)
                 break;
             default:
                 writeln("Valid parameters for --hash: \nsha1");
+        }
+    }
+
+    // Benchmark
+    else if (benchmark != null)
+    {
+        switch (benchmark)
+        {
+            case "aes-128-ecb":
+                auto k = parseHexString!(16)(key);
+                auto ecb = new ECB(new AES128(k));
+                long tStart = Clock.currStdTime();
+                ecb.encrypt(inStream, outStream);
+                long tEnd = Clock.currStdTime();
+                write(tStart); write(" "); writeln(tEnd);
+                write("Duration: "); writeln(dur!"hnsecs"(tEnd - tStart));
+                break;
+            default:
+                writeln("Valid parameters for --benchmark: \naes-128-ecb");
         }
     }
 
