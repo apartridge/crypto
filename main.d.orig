@@ -6,6 +6,15 @@ import crypto.mode.ecb;
 
 import std.stdio, std.algorithm, std.getopt, std.stream, std.cstream;
 
+<<<<<<< HEAD
+=======
+int main(string[] argv)
+{
+    auto sha1 = new SHA1;
+    sha1.put("A");
+    writeln(sha1.digestHex());
+>>>>>>> 2e270a6e4754c3d2cd9c97b569cce6260ef63268
+
 /*
  * Simple command line support for accessing functions.
  * Leaving out --in or --out will default to stdin and stdout.
@@ -79,6 +88,8 @@ void execute(string[] args)
     }
 }
 
+
+<<<<<<< HEAD
 ubyte[k] parseHexString(uint k)(string s)
 if (k % 2 == 0)
 {
@@ -96,6 +107,9 @@ if (k % 2 == 0)
         res[i/2] = cast(ubyte) (lookup[a] << 4 | lookup[b]);
     }
     return res;
+=======
+    return 0;
+>>>>>>> 2e270a6e4754c3d2cd9c97b569cce6260ef63268
 }
 
 

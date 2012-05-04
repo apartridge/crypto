@@ -86,7 +86,7 @@
   <preBuildCommand />
   <postBuildCommand />
   <debugtarget>$(ProjectDir)\$(ConfigurationName)\$(ProjectName).exe</debugtarget>
-  <debugarguments />
+  <debugarguments>-property</debugarguments>
   <debugworkingdir />
   <debugattach>0</debugattach>
   <debugremote />
