@@ -5,26 +5,32 @@ import crypto.blockcipher.aes;
 import crypto.mode.ecb;
 
 import std.stdio, std.algorithm, std.getopt, std.stream, std.cstream;
-import std.datetime;
 
-/***
+<<<<<<< HEAD
+=======
+int main(string[] argv)
+{
+    auto sha1 = new SHA1;
+    sha1.put("A");
+    writeln(sha1.digestHex());
+>>>>>>> 2e270a6e4754c3d2cd9c97b569cce6260ef63268
+
+/*
  * Simple command line support for accessing functions.
  * Leaving out --in or --out will default to stdin and stdout.
  *
  * >crypto --hash sha1 -in <file>
  * >crypto --enc aes-128-ecb --in <file1> --out <file2> --key <key>
  * >crypto --dec aes-128-ecb --in <file2> --out <file1> --key <key>
- * >crypto --benchmark aes-128-ecb --in "test/bbt.avi" --out "test/bbt.avi.enc" --key 000102030405060708090a0b0c0d0e0f
 */
 
 void execute(string[] args)
 {
-    string enc, dec, hash, benchmark, input, output, key;
+    string enc, dec, hash, input, output, key;
     getopt(args,
            "enc", &enc,
            "dec", &dec,
            "hash", &hash,
-           "benchmark", &benchmark,
            "in", &input,
            "out", &output,
            "key", &key
@@ -34,9 +40,9 @@ void execute(string[] args)
     InputStream inStream = din;
     OutputStream outStream = dout;
     if (input != null)
-        inStream = new BufferedFile(input);
+        inStream = new std.stream.File(input);
     if (output != null)
-        outStream = new BufferedFile(output, FileMode.Out);
+        outStream = new std.stream.File(output, FileMode.Out);
     
     // Encrypt
     if (enc != null)
@@ -75,25 +81,6 @@ void execute(string[] args)
         }
     }
 
-    // Benchmark
-    else if (benchmark != null)
-    {
-        switch (benchmark)
-        {
-            case "aes-128-ecb":
-                auto k = parseHexString!(16)(key);
-                auto ecb = new ECB(new AES128(k));
-                long tStart = Clock.currStdTime();
-                ecb.encrypt(inStream, outStream);
-                long tEnd = Clock.currStdTime();
-                write(tStart); write(" "); writeln(tEnd);
-                write("Duration: "); writeln(dur!"hnsecs"(tEnd - tStart));
-                break;
-            default:
-                writeln("Valid parameters for --benchmark: \naes-128-ecb");
-        }
-    }
-
     // Invalid command
     else
     {
@@ -101,6 +88,8 @@ void execute(string[] args)
     }
 }
 
+
+<<<<<<< HEAD
 ubyte[k] parseHexString(uint k)(string s)
 if (k % 2 == 0)
 {
@@ -118,6 +107,9 @@ if (k % 2 == 0)
         res[i/2] = cast(ubyte) (lookup[a] << 4 | lookup[b]);
     }
     return res;
+=======
+    return 0;
+>>>>>>> 2e270a6e4754c3d2cd9c97b569cce6260ef63268
 }
 
 

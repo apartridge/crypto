@@ -200,6 +200,9 @@
    <Folder name="blockcipher">
     <File path="crypto\blockcipher\aes.d" />
    </Folder>
+   <Folder name="mode">
+    <File path="ecb.d" />
+   </Folder>
    <Folder name="hash">
     <File path="crypto\hash\merkle_damgaard.d" />
     <File path="crypto\hash\sha1.d" />
