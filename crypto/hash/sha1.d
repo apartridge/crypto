@@ -4,7 +4,7 @@ module crypto.hash.sha1;
 Implements RFC 3174 - US Secure Hash Algorithm 1 (SHA1)
 */
 
-public import crypto.hash.base;
+public import crypto.hash.d;
 private import std.bitmanip;
 private import crypto.hash.merkle_damgaard;
 

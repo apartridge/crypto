@@ -1,4 +1,4 @@
-module crypto.hash.base;
+module crypto.hash.d;
 import std.traits;
 
 abstract class Hash

@@ -1,5 +1,5 @@
 module crypto.hash.merkle_damgaard;
-private import crypto.hash.base;
+private import crypto.hash.d;
 private import std.bitmanip;
 private import std.stdio;
 private import std.algorithm : min;
