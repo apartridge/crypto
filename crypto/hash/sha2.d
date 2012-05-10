@@ -1,6 +1,6 @@
 module crypto.hash.sha2;
 
-private import crypto.hash.base;
+private import crypto.hash.d;
 private import crypto.hash.merkle_damgaard;
 private import std.bitmanip;
 
@@ -236,6 +236,7 @@ class SHA384 : SHA512Internal!48
         assert(hash!SHA384("The quick brown fox jumps over the lazy dog")
                == x"ca737f1014a48f4c0b6dd43cb177b0afd9e5169367544c494011e3317dbf9a509cb1e5dc1e85a941bbee3d7f2afbc9b1",
                "SH384 failed with wrong digest.");
+
         assert(hash!SHA384("The quick brown fox jumps over the lazy dog.")
                == x"ed892481d8272ca6df370bf706e4d7bc1b5739fa2177aae6c50e946678718fc67a7af2819a021c2fc34e91bdb63409d7",
                "SH384 failed with wrong digest.");

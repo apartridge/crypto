@@ -192,15 +192,24 @@
  </Config>
  <Folder name="crypto">
   <Folder name="crypto">
+   <Folder name="asymmetric">
+    <File path="crypto\asymmetric\bigint.d" />
+    <File path="crypto\asymmetric\biguintcore.d" />
+    <File path="crypto\asymmetric\rsa.d" />
+   </Folder>
    <Folder name="blockcipher">
     <File path="crypto\blockcipher\aes.d" />
    </Folder>
    <Folder name="hash">
-    <File path="crypto\hash\base.d" />
     <File path="crypto\hash\merkle_damgaard.d" />
     <File path="crypto\hash\sha1.d" />
     <File path="crypto\hash\sha2.d" />
    </Folder>
+   <Folder name="prng">
+    <File path="crypto\prng\insecure.d" />
+   </Folder>
+   <File path="crypto\hash.d" />
+   <File path="crypto\prng.d" />
   </Folder>
   <File path="main.d" />
  </Folder>
