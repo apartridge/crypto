@@ -153,9 +153,10 @@ unittest
     BigInt base = "5";
     BigInt exp = "2";
     BigInt modulus = "4";
-
     BigInt result = base.powModulus(exp, modulus);
-    writeln("Result of 5^2 (mod 4) = ", result);
+
+
+    //writeln("Result of 5^2 (mod 4) = ", result);
 }
 
 
