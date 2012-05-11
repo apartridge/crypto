@@ -833,20 +833,45 @@ public:
         return result;
     }
 
-    /**
-    * Return a BigUint which is x raised to the power of y, mod m.
-    * Author Stian Pedersen
+    /* Return x raised to the power of y, mod m.
     */
-
-    static BigUint powModulus(BigUint base, BigUint exp, BigUint modulus)
+    static BigUint powMod(BigUint base, BigUint exp, BigUint modulus)
     {
-        
-        return BigUint([0]);
-    }
+        BigUint c = BigUint([1]);
+        for (int block = exp.data.length-1; block >= 0; --block)
+        {
+            BigDigit expBitBlock = exp.data[block];
+            for (uint i = 0; i <= BIGDIGITSHIFTMASK; ++i) // 31 (uint) or 63 (ulong)
+            {
+                c = mul(c, c);
+                c = mod(c, modulus);
 
+                if (expBitBlock & (1 << BIGDIGITSHIFTMASK)) // 0x8000 or 0x8000_0000 
+                {
+                    c = mul(base, c);
+                    c = mod(c, modulus);
+                }
+                expBitBlock <<= 1;
+            }
+        }
+        return c;
+    }
 
 } // end BigUint
 
+// ModPow tests
+unittest
+{
+    BigUint b, e, m, r;
+    e.fromHexString("5");
+    b.fromHexString("80000000_00000001");
+    m.fromDecimalString("37975227936943673922808872755445627854565536638199");
+    r.fromHexString("F03E929C_4A0DD6F7_6DAA40D0_C984920D_3E68482E");
+
+    BigUint result = BigUint.powMod(b, e, m);
+
+    assert(result == r);
+}
 
 // Remove leading zeros from x, to restore the BigUint invariant
 BigDigit[] removeLeadingZeros(BigDigit [] x)

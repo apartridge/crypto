@@ -129,9 +129,12 @@ int main(string[] argv)
     }
     catch (Exception e)
     {
-        writeln("Bad input");
-        writeln(e);
+        //writeln("Bad input");
+        //writeln(e);
+        import crypto.asymmetric.rsa;
+        rsaMain();
     }
 
+    std.process.system("pause");
 	return 0;
 }

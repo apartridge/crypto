@@ -149,21 +149,21 @@ class RSA
 
 unittest
 {
-    // 5^2 mod 4 = 25%4 = 1
-    BigInt base = "5";
-    BigInt exp = "2";
-    BigInt modulus = "4";
-    BigInt result = base.powModulus(exp, modulus);
+    BigInt base = "4";
+    BigInt exp = "13";
+    BigInt modulus = "497";
+    BigInt result = base.modPow(exp, modulus);
 
-
-    //writeln("Result of 5^2 (mod 4) = ", result);
+    writeln("Result of 4^13 (mod 497) = ", result);
+    BigInt answer = "445";
+    assert(result == answer);
 }
 
 
 
 
 
-void main22()
+void rsaMain()
 {
     IRandom prng = new InsecurePRNG();
     auto generator = new RSAKeyGenerator(2048, prng);
