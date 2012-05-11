@@ -4,7 +4,7 @@ import crypto.prng.d;
 
 class InsecurePRNG : PRNG
 {
-    void nextBytes(ubyte[] buffer){
+    override void nextBytes(ubyte[] buffer){
         buffer[] = 0x01;
     }
 }

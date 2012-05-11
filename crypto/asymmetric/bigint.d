@@ -374,19 +374,19 @@ public:
         return sign? -cmp: cmp;
     }
 
-    // Modular Power (Stian Pedersen..)
-    // Wrapper around the 
-
-    BigInt powModulus(BigInt exp, BigInt modulus)
+    ///
+    BigInt powMod(BigInt exp, BigInt modulus)
     {
-        // Todo signs
-        BigInt result = void;
-        result.sign = false;
-        result.data = BigUint.powModulus(this.data, exp.data, modulus.data);
-        return result;
+        assert(!sign && !modulus.sign);
+        if (exp.sign)
+        {
+            // TODO: Find multiplicative inverse and call modPow
+        }
+        
+        BigInt res;
+        res.data = BigUint.powMod(this.data, exp.data, modulus.data);
+        return res;
     }
-
-
 
     /// Returns the value of this BigInt as a long,
     /// or +- long.max if outside the representable range.

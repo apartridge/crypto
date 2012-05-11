@@ -121,17 +121,21 @@ if (k % 2 == 0)
 }
 
 
-int main(string[] argv)
+int main2(string[] argv)
 {
+
     try
     {
         execute(argv);
     }
     catch (Exception e)
     {
-        writeln("Bad input");
-        writeln(e);
+        //writeln("Bad input");
+        //writeln(e);
+        //import crypto.asymmetric.rsa;
+        //rsaMain();
     }
 
+    std.process.system("pause");
 	return 0;
 }
