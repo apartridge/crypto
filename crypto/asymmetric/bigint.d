@@ -112,6 +112,46 @@ public:
         sign = neg;
     }
 
+    // Added by L&S for random number generator
+    this(T:ubyte[])(T a)
+    {
+        sign = false;
+        if (!data.fromUbyteArray(a))
+        {
+            assert(false);
+        }
+    }
+
+    unittest
+    {
+        ubyte[][] hexArrayNumbers = [
+            [0x00],
+            [0x01],
+            [0x00, 0x12],
+            [0x01, 0x02, 0x03],
+            [0x01, 0x02, 0x03, 0x04],
+            [0x01, 0x02, 0x03, 0x04, 0x05],
+            [0x00, 0xff, 0xee, 0x00, 0x00, 0x00, 0x10, 0x00]
+        ];
+
+        string[] hexStringNumbers = [
+            "0x00",
+            "0x01",
+            "0x012",
+            "0x010203",
+            "0x01020304",
+            "0x0102030405",
+            "0x00ffee0000001000"
+        ];
+
+        for (int i = 0; i < hexArrayNumbers.length; ++i)
+        {
+            BigInt a = BigInt(hexArrayNumbers[i]);
+            BigInt b = BigInt(hexStringNumbers[i]);
+            assert(a == b, "Wrong initialization of number "~hexStringNumbers[i]);
+        }
+    }
+
     ///
     this(T: long) (T x)
     {

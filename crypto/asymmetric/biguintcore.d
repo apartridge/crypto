@@ -392,6 +392,54 @@ public:
         return true;
     }
 
+    // Added by L&S for random number init
+    bool fromUbyteArray(ubyte[] d)
+    {
+        //Strip leading zeros
+        int firstNonZero = 0;
+        while ((firstNonZero < d.length) && (d[firstNonZero]==0x00))
+        {
+            ++firstNonZero;
+        }
+        if (firstNonZero == d.length && d.length >= 1)
+        {
+            data = ZERO;
+            return true;
+        }
+        const int numBytes = (d.length - firstNonZero);
+        const int numWholeWords = numBytes / 4;
+        const int numExtraBytes = numBytes % 4;
+        const int numWords = numExtraBytes > 0 ? numWholeWords + 1 : numWholeWords;
+        data = new BigDigit[numWords];
+
+        // From least significant (start of data)
+        for (int word = 0; word < numWholeWords; ++word)
+        {
+            data[word] = d[$-1 - word*4];
+            data[word] |= d[$-1 - word*4 - 1] << 8;
+            data[word] |= d[$-1 - word*4 - 2] << 16;
+            data[word] |= d[$-1 - word*4 - 3] << 24;
+        }
+
+        // Most significant extra byte (end of data)
+        if (numWords > numWholeWords)
+        {
+            if (numExtraBytes == 1)
+            {
+                data[$-1] = d[firstNonZero];
+            }
+            else if (numExtraBytes == 2)
+            {
+                data[$-1] = d[firstNonZero] << 8 | d[firstNonZero+1];
+            }
+            else if (numExtraBytes == 3)
+            {
+                data[$-1] = d[firstNonZero] << 16 | d[firstNonZero+1] << 8 | d[firstNonZero+2];
+            }
+        }
+        return true;
+    }
+
     ////////////////////////
     //
     // All of these member functions create a new BigUint.
