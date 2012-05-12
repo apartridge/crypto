@@ -10,7 +10,7 @@ struct RSAKeyPair
 {
     public BigInt n;
     public BigInt d;
-    public long e;
+    public BigInt e;
     public BigInt p;
     public BigInt q;
 
@@ -49,11 +49,8 @@ class RSAKeyGenerator
         auto n = BigInt("3233");
         auto one = BigInt("1");
         auto totient = (p-one)*(q-one);
-
-        auto e = 17;
-        BigInt bige = e;
-
-        auto d = modularMultiplicativeInverse(bige, totient);
+        BigInt e = 17;
+        auto d = modularMultiplicativeInverse(e, totient);
         RSAKeyPair keypair =  {n, d, e, p, q};
 
         return keypair;
@@ -117,6 +114,15 @@ class RSAKeyGenerator
 
 }
 
+
+
+
+
+
+
+
+
+
 /* 
 * Handles RSA encryption and decryption.
 */
@@ -133,56 +139,85 @@ class RSA
     // Encryption (m^e)
     BigInt encrypt(BigInt m)
     {
-        return (m ^^ keypair.e) % keypair.n;
+        BigInt result = m.powMod(keypair.e, keypair.n);
+
+        //writefln("%s^%s mod %s is %s", m, bige, keypair.n, result);
+
+        return result;
     }
 
     // Decryption (m^d)
     BigInt decrypt(BigInt m)
     {
-
-        BigInt res = (m, keypair.d, keypair.n);
+        BigInt res = m.powMod(keypair.d, keypair.n);
         return res;
+    }
+
+    /*
+    // Test RSA encryption and decryption
+    */
+
+    unittest
+    {
+        BigInt n = "3233";
+        BigInt p = "61";
+        BigInt q = "53";
+        BigInt one = "1";
+        BigInt totient = (p-one)*(q-one);
+        BigInt e = "17";
+        BigInt d = RSAKeyGenerator.modularMultiplicativeInverse(e, totient);
+        RSAKeyPair fixed_pair = {n, d, e, p, q};
+        RSA rsaobj = new RSA(fixed_pair);
+
+        BigInt input = "65";
+        BigInt encrypted = rsaobj.encrypt(input);
+        BigInt decrypted = rsaobj.decrypt(encrypted);
+
+        scope(failure)
+        {
+            writeln("RSA enryption/decryption test failed:");
+            writeln("Input: ", input);
+            writeln("Encrypted: ", encrypted);
+            writeln("Decrypted: ", decrypted);
+        }
+
+        assert(encrypted == BigInt("2790"), "Encrypted value is not correct, expecting 2790.");
+        assert(decrypted == input, "Decrypting does not give back original input.");
 
     }
 
 }
+
+// Should be moved to bigint or something
 
 unittest
 {
     BigInt base = "4";
     BigInt exp = "13";
     BigInt modulus = "497";
-    BigInt result = base.modPow(exp, modulus);
-
-    writeln("Result of 4^13 (mod 497) = ", result);
+    BigInt result = base.powMod(exp, modulus);
     BigInt answer = "445";
     assert(result == answer);
 }
 
 
-
-
-
-void rsaMain()
+void main()
 {
     IRandom prng = new InsecurePRNG();
     auto generator = new RSAKeyGenerator(2048, prng);
 
     RSAKeyPair myfirstpair = generator.newKeyPair();
-    //RSAKeyPair mysecondpair = generator.newKeyPair();
 
     RSA rsaobj = new RSA(myfirstpair);
 
-    BigInt input = "6565465465465132132";
+    BigInt input = "3231";
+
+    writeln("Input value is ", input);
     BigInt encrypted = rsaobj.encrypt(input);
-
     writeln("Encrypted value is ", encrypted);
-
     BigInt original = rsaobj.decrypt(encrypted);
+    writeln("Recovered input value is ", original);
 
-    writeln(original);
-
-
-
+    std.process.system("pause");
 
 }

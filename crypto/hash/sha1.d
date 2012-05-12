@@ -14,7 +14,7 @@ version(unittest){
 
 class SHA1 : MerkleDamgaard!(20, uint, 20, 64, 8) 
 {
-    protected void setInitialVector () {
+    protected override void setInitialVector () {
         h[0] = 0x67452301;
         h[1] = 0xefcdab89;
         h[2] = 0x98badcfe;

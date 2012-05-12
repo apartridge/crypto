@@ -375,7 +375,7 @@ public:
     }
 
     ///
-    BigInt modPow(BigInt exp, BigInt modulus)
+    BigInt powMod(BigInt exp, BigInt modulus)
     {
         assert(!sign && !modulus.sign);
         if (exp.sign)

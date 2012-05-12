@@ -27,7 +27,7 @@ void execute(string[] args)
            "benchmark", &benchmark,
            "in", &input,
            "out", &output,
-           "key", &key
+	   "key", &key
     );
 
     // Initialize input/output streams to stdin/stdout
@@ -77,7 +77,7 @@ void execute(string[] args)
                 outStream.writeLine(sha1.digestHex());
                 break;
             default:
-                writeln("Valid parameters for --hash: \nsha1");
+               writeln("Valid parameters for --hash: \nsha1");
         }
     }
 
@@ -147,16 +147,19 @@ if (k % 2 == 0)
 }
 
 
-int main(string[] argv)
+int main2(string[] argv)
 {
+
     try
     {
         execute(argv);
     }
     catch (Exception e)
     {
-        writeln("Bad input");
-        writeln(e);
+        //writeln("Bad input");
+        //writeln(e);
+        //import crypto.asymmetric.rsa;
+        //rsaMain();
     }
 
     //std.process.system("pause");

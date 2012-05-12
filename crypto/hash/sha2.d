@@ -75,7 +75,7 @@ private class SHA256Internal (int outputBytes )  : MerkleDamgaard!(outputBytes, 
 
 class SHA224 : SHA256Internal!28
 {
-    protected void setInitialVector () {
+    protected override void setInitialVector () {
         h[0] = 0xc1059ed8;
         h[1] = 0x367cd507;
         h[2] = 0x3070dd17;
@@ -103,7 +103,7 @@ class SHA224 : SHA256Internal!28
 
 class SHA256 : SHA256Internal!32
 {
-    protected void setInitialVector () {
+    protected override void setInitialVector () {
         h[0] = 0x6a09e667;
         h[1] = 0xbb67ae85;
         h[2] = 0x3c6ef372;
@@ -206,7 +206,7 @@ private class SHA512Internal (int outputBytes) : MerkleDamgaard!(outputBytes, ul
 
     }
 
-    protected ubyte[16] messageLengthAppendix(ulong messageLengthBytes)
+    protected override ubyte[16] messageLengthAppendix(ulong messageLengthBytes)
     {
         ubyte[16] r = void;
         r[0..8] = 0;
@@ -218,7 +218,7 @@ private class SHA512Internal (int outputBytes) : MerkleDamgaard!(outputBytes, ul
 
 class SHA384 : SHA512Internal!48
 {
-    protected void setInitialVector () {
+    protected override void setInitialVector () {
 
         h[0] = 0xcbbb9d5dc1059ed8; 
         h[1] = 0x629a292a367cd507; 
@@ -250,7 +250,7 @@ class SHA384 : SHA512Internal!48
 
 class SHA512 : SHA512Internal!64
 {
-    protected void setInitialVector () {
+    protected override void setInitialVector () {
         h[0] = 0x6a09e667f3bcc908;
         h[1] = 0xbb67ae8584caa73b;
         h[2] = 0x3c6ef372fe94f82b;
