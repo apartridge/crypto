@@ -2,7 +2,7 @@ module crypto.mode.ecb;
 
 import crypto.blockcipher.aes;
 import std.file, std.stdio, std.array, std.stream;
-
+import std.datetime;
 
 public interface SymmetricScheme
 {
@@ -25,11 +25,15 @@ class ECB : SymmetricScheme
         ubyte[] inBuffer  = new ubyte[blockSize];
         ubyte[] outBuffer = new ubyte[blockSize];
         uint bytesRead;
+        long encryptTime = 0;
 
         // Encrypt all whole blocks
         while ((bytesRead = input.read(inBuffer)) == blockSize)
         {
+            long tStart = Clock.currStdTime();
             blockCipher.encrypt(inBuffer, outBuffer);
+            long tEnd = Clock.currStdTime();
+            encryptTime += (tEnd - tStart);
             output.write(outBuffer);
         }
 
@@ -39,6 +43,8 @@ class ECB : SymmetricScheme
             inBuffer[i] = paddingByte;
         blockCipher.encrypt(inBuffer, outBuffer);
         output.write(outBuffer);
+
+        write("Encryption time: "); write(encryptTime / 10000000.0); writeln(" seconds");
     }
     
     public void decrypt(InputStream input, OutputStream output)

@@ -4,7 +4,7 @@ import crypto.hash.sha1;
 import crypto.blockcipher.aes;
 import crypto.mode.ecb;
 
-import std.stdio, std.algorithm, std.getopt, std.stream, std.cstream;
+import std.stdio, std.algorithm, std.getopt, std.stream, std.cstream, std.mmfile;
 import std.datetime;
 
 /***
@@ -33,11 +33,17 @@ void execute(string[] args)
     // Initialize input/output streams to stdin/stdout
     InputStream inStream = din;
     OutputStream outStream = dout;
+    ulong inputFileLength = 0;
     if (input != null)
-        inStream = new BufferedFile(input);
+    {
+        auto inputMemoryMap = new MmFile(input);
+        inputFileLength = inputMemoryMap.length();
+        inStream = new MmFileStream(inputMemoryMap);
+    }
     if (output != null)
         outStream = new BufferedFile(output, FileMode.Out);
     
+ 
     // Encrypt
     if (enc != null)
     {
@@ -78,16 +84,36 @@ void execute(string[] args)
     // Benchmark
     else if (benchmark != null)
     {
+        // Create memory mapped output file as well, need precalculated result size
+        /*if (output != null)
+        {
+            auto paddingLength = 16L;
+            auto outputMemoryMap = new MmFile(input, MmFile.Mode.readWriteNew, inputFileLength + paddingLength, null, 0);
+            outStream = new MmFileStream(outputMemoryMap);
+        }*/
+        
+        if (output == null)
+        {
+            uint paddingLength = 16;
+            MemoryStream memOut = new MemoryStream();
+            memOut.reserve(cast(uint)inputFileLength + paddingLength);
+            outStream = memOut;
+        }
+
         switch (benchmark)
         {
             case "aes-128-ecb":
                 auto k = parseHexString!(16)(key);
                 auto ecb = new ECB(new AES128(k));
+
                 long tStart = Clock.currStdTime();
                 ecb.encrypt(inStream, outStream);
                 long tEnd = Clock.currStdTime();
-                write(tStart); write(" "); writeln(tEnd);
+
+                auto mb = inputFileLength/(1024.0*1024.0);
+                auto sec = (tEnd - tStart) / 10000000.0;
                 write("Duration: "); writeln(dur!"hnsecs"(tEnd - tStart));
+                write("Throughput: "); write(mb / sec); writeln(" MB/s");
                 break;
             default:
                 writeln("Valid parameters for --benchmark: \naes-128-ecb");
@@ -129,12 +155,10 @@ int main(string[] argv)
     }
     catch (Exception e)
     {
-        //writeln("Bad input");
-        //writeln(e);
-        import crypto.asymmetric.rsa;
-        rsaMain();
+        writeln("Bad input");
+        writeln(e);
     }
 
-    std.process.system("pause");
+    //std.process.system("pause");
 	return 0;
 }
