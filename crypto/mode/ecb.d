@@ -45,6 +45,7 @@ class ECB : SymmetricScheme
         output.write(outBuffer);
 
         write("Encryption time: "); write(encryptTime / 10000000.0); writeln(" seconds");
+        blockCipher.reportTiming();
     }
     
     public void decrypt(InputStream input, OutputStream output)

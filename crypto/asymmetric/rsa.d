@@ -201,7 +201,7 @@ unittest
 }
 
 
-void main()
+void main1()
 {
     IRandom prng = new InsecurePRNG();
     auto generator = new RSAKeyGenerator(2048, prng);

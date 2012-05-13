@@ -27,7 +27,7 @@ void execute(string[] args)
            "benchmark", &benchmark,
            "in", &input,
            "out", &output,
-	   "key", &key
+	       "key", &key
     );
 
     // Initialize input/output streams to stdin/stdout
@@ -147,7 +147,7 @@ if (k % 2 == 0)
 }
 
 
-int main2(string[] argv)
+int main(string[] argv)
 {
 
     try
