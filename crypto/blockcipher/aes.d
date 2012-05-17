@@ -6,8 +6,8 @@ import std.datetime;
 
 public interface BlockCipher
 {
-    public void encrypt(ubyte[] message, ref ubyte[] cipher);
-    public void decrypt(ubyte[] cipher, ref ubyte[] message);
+    public void encrypt(ref ubyte[] message);
+    public void decrypt(ref ubyte[] cipher);
 
     @property public const uint blockSize();
     public void reportTiming();
@@ -30,17 +30,17 @@ class AES128 : AES!(4, 4, 10)
 
     unittest
     {
-        auto message = cast(ubyte[16]) x"00112233445566778899aabbccddeeff";
         auto key     = cast(ubyte[16]) x"000102030405060708090a0b0c0d0e0f";
+        auto message = cast(ubyte[16]) x"00112233445566778899aabbccddeeff";
         auto cipher  = cast(ubyte[16]) x"69c4e0d86a7b0430d8cdb78070b4c55a";
-        ubyte[] buffer = new ubyte[16];
+        ubyte[] buffer = message.dup;
 
         auto aes = new AES128(key);
 
-        aes.encrypt(message, buffer);
-        assert(buffer == cipher);
+        aes.encrypt(buffer);
+        assert(buffer == cipher, byteToHexString(buffer));
 
-        aes.decrypt(cipher, buffer);
+        aes.decrypt(buffer);
         assert(buffer == message);
     }
 }
@@ -54,14 +54,14 @@ class AES192 : AES!(4, 6, 12)
         auto message = cast(ubyte[16]) x"00112233445566778899aabbccddeeff";
         auto key     = cast(ubyte[24]) x"000102030405060708090a0b0c0d0e0f1011121314151617";
         auto cipher  = cast(ubyte[16]) x"dda97ca4864cdfe06eaf70a0ec0d7191";
-        ubyte[] buffer = new ubyte[16];
+        ubyte[] buffer = message.dup;
 
         auto aes = new AES192(key);
 
-        aes.encrypt(message, buffer);
+        aes.encrypt(buffer);
         assert(buffer == cipher);
 
-        aes.decrypt(cipher, buffer);
+        aes.decrypt(buffer);
         assert(buffer == message);
     }
 }
@@ -75,14 +75,14 @@ class AES256 : AES!(4, 8, 14)
         auto message = cast(ubyte[16]) x"00112233445566778899aabbccddeeff";
         auto key     = cast(ubyte[32]) x"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
         auto cipher  = cast(ubyte[16]) x"8ea2b7ca516745bfeafc49904b496089";
-        ubyte[] buffer = new ubyte[16];
+        ubyte[] buffer = message.dup;
 
         auto aes = new AES256(key);
 
-        aes.encrypt(message, buffer);
+        aes.encrypt(buffer);
         assert(buffer == cipher);
 
-        aes.decrypt(cipher, buffer);
+        aes.decrypt(buffer);
         assert(buffer == message);
     }
 }
@@ -92,10 +92,11 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
     (Nb == 4 && Nk == 6 && Nr == 12) ||
     (Nb == 4 && Nk == 8 && Nr == 14)) : BlockCipher
 {
-    alias uint[Nb] State;
     alias uint[Nb] Key;
 
-    union state_t
+    uint[Nb*(Nr+1)] w;
+
+    union State
     {
         uint[Nb] words;
         ubyte[4*Nb] bytes;
@@ -270,6 +271,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
     public static long shiftRowsTime;
     public static long mixColumnsTime;
     public static long addRoundKeyTime;
+    public static long copyTime;
 
     public void reportTiming()
     {
@@ -278,93 +280,107 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         std.stdio.write("Shift Rows: "); std.stdio.write(shiftRowsTime / 10000000.0); writeln(" seconds");
         std.stdio.write("Mix Columns: "); std.stdio.write(mixColumnsTime / 10000000.0); writeln(" seconds");
         std.stdio.write("Add Round Key: "); std.stdio.write(addRoundKeyTime / 10000000.0); writeln(" seconds");
+        std.stdio.write("Copy overhead: "); std.stdio.write(copyTime / 10000000.0); writeln(" seconds");
     }
 
-    public void encrypt(ubyte[] message, ref ubyte[] cipher)
+    public void encrypt(ref ubyte[] message)
     {
-        // Shuffle around bytes to conform to Intel little endian standard
-        // Possible to use sse instructions with 128 bit registers
-        State state = cast(State) bytesToWords(reverseBytes(message));
+        long tStart = Clock.currStdTime();
+        State state;
+        state.bytes = message;
+        long tEnd = Clock.currStdTime();
+        copyTime += (tEnd - tStart);
 
-        addRoundKey(state, key[0]);
+        //std.stdio.writeln(wordToString(0x00112233));
+        //std.stdio.writeln(byteToHexString(state.bytes));
+        //printHex(0, "input", state.bytes);
+
+        addRoundKey(state, w[0 .. Nb]); // key[0]
+        //printHex(0, "k_sch", w[0 .. Nb]);
+        //printHex(0, "start", state.bytes);
+
         uint round = 0;
         while (round++ < Nr - 1)
         {
             subBytes(state);
-            state = shiftRows(state);
-            state = mixColumns(state);
-            addRoundKey(state, key[round]);
+            //printHex(round, "s_box", state.bytes);
+
+            shiftRows(state);
+            //printHex(round, "s_row", state.bytes);
+
+            mixColumns(state);
+            //printHex(round, "m_col", state.bytes);
+            //printHex(round, "k_sch", w[round*Nb .. (round+1)*Nb]);
+
+            addRoundKey(state, w[round*Nb .. (round+1)*Nb]); //key[round]
+            //printHex(round, "start", state.bytes);
+
         }
         subBytes(state);
-        state = shiftRows(state);
-        addRoundKey(state, key[round]);
+        //printHex(round, "s_box", state.bytes);
 
-        foreach (uint i, ubyte b; reverseBytes(wordsToBytes(state)))
-            cipher[i] = b;
+        shiftRows(state);
+        //printHex(round, "s_row", state.bytes);
+        //printHex(round, "k_sch", w[Nr*Nb .. (Nr+1)*Nb]);
+
+        addRoundKey(state, w[Nr*Nb .. (Nr+1)*Nb]); // key[round]
+        //printHex(round, "output", state.bytes);
+
+        tStart = Clock.currStdTime();
+        message[0 .. state.bytes.length] = state.bytes;
+        tEnd = Clock.currStdTime();
+        copyTime += (tEnd - tStart);
     }
- 
-    public void decrypt(ubyte[] cipher, ref ubyte[] message)
+
+    public void decrypt(ref ubyte[] cipher)
     {
-        State state = cast(State) bytesToWords(reverseBytes(cipher));
+        State state;
+        state.bytes = cipher[0 .. 16];
+        
+        addRoundKey(state, w[Nr*Nb .. (Nr+1)*Nb]);
 
-        addRoundKey(state, key[Nr]);
-        uint round = 0;
-        for (round = Nr - 1; round > 0; --round)
+        for (int round = Nr - 1; round > 0; --round)
         {
-            state = invShiftRows(state);
+            invShiftRows(state);
             invSubBytes(state);
-            addRoundKey(state, key[round]);
-            state = invMixColumns(state);
+            addRoundKey(state, w[round*Nb .. (round+1)*Nb]);
+            invMixColumns(state);
         }
-        state = invShiftRows(state);
+        invShiftRows(state);
         invSubBytes(state);
-        addRoundKey(state, key[0]);
+        addRoundKey(state, w[0 .. Nb]);
 
-        foreach (uint i, ubyte b; reverseBytes(wordsToBytes(state)))
-            message[i] = b;
+        cipher[0 .. state.bytes.length] = state.bytes;
     }
 
-    private static void addRoundKey(ref State s, ref Key k)
+    private static void addRoundKey(ref State s, ref uint[] k)
     {
         long tStart = Clock.currStdTime();
-        /*version(D_InlineAsm_X86)
-        {
-            auto state_ptr = s.ptr;
-            auto key_ptr = k.ptr;
-            asm
-            {
-                mov EAX, state_ptr;
-                mov ECX, key_ptr;
-                movupd XMM1, [EAX];
-                movupd XMM2, [ECX];
-                xorpd XMM1, XMM2;
-                movupd [EAX], XMM1;
-                mov state_ptr, EAX;
-            }
-        }
-        else*/
-        {
-            foreach (uint i, ref uint n; s) n ^= k[i];
-        }
+
+        for (int i = 0; i < Nb; ++i)
+            s.words[i] ^= k[i];
+
         long tEnd = Clock.currStdTime();
         addRoundKeyTime += (tEnd - tStart);
     }
 
-    unittest {
-        State a = [0x00112233, 0x44556677, 0x8899aabb, 0xccddeeff];
-        State b = [0x00102030, 0x40506070, 0x8090a0b0, 0xc0d0e0f0];
-        Key k   = [0x00010203, 0x04050607, 0x08090a0b, 0x0c0d0e0f];
-        addRoundKey(a, k);
-        assert(a == b, "AddRoundKey");
+    unittest 
+    {
+        State a, b;
+        a.bytes = cast(ubyte[16]) x"00112233445566778899aabbccddeeff";
+        b.bytes = cast(ubyte[16]) x"00102030405060708090a0b0c0d0e0f0";
+        uint[] key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c];
+        addRoundKey(a, key);
+        assert(a == b);
     }
 
     private static void subBytes(ref State s, ref const ubyte[] b = sbox)
     {
         long tStart = Clock.currStdTime();
-        foreach (ref uint i; s) 
-            i = b[i >> 24] << 24 | b[(i & 0x00ff0000) >> 16] << 16 | 
-            b[(i & 0x0000ff00) >> 8] << 8 | b[i & 0x000000ff];
-        
+        for (uint i = 0; i < Nb*4; ++i)
+        {
+            s.bytes[i] = b[s.bytes[i]];
+        }
         long tEnd = Clock.currStdTime();
         subBytesTime += (tEnd - tStart);
     }
@@ -376,149 +392,137 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
 
     unittest
     {
-        State a = [0x73744765, 0x63535465, 0x5d5b5672, 0x7b746f5d];
-        State b = [0x8f92a04d, 0xfbed204d, 0x4c39b140, 0x2192a84c];
-        State c = [0x73744765, 0x63535465, 0x5d5b5672, 0x7b746f5d];
+        State a, b, c;
+        a.bytes = cast(ubyte[16]) x"73744765635354655d5b56727b746f5d";
+        b.bytes = cast(ubyte[16]) x"8f92a04dfbed204d4c39b1402192a84c";
+        c.bytes = cast(ubyte[16]) x"73744765635354655d5b56727b746f5d";
 
         subBytes(a);
-        assert(a == b, "SubBytes");
+        assert(a == b);
 
         invSubBytes(b);
-        assert(b == c, "InvSubBytes");
+        assert(b == c);
     }
 
-    private static State shiftRows(State s)
+    /*
+     * The three last rows (columns in memory layout(!)) are rotated 1, 2, 3 steps
+     * NB: This works for little-endian. Need special case for big endian
+     */
+    private static void shiftRows(ref State s)
     {
         long tStart = Clock.currStdTime();
-        State sp = [0, 0, 0, 0];
-        foreach (uint i, uint n; s)
-        {
-            sp[(i + 3) % 4] ^= n & 0xff000000;
-            sp[(i + 2) % 4] ^= n & 0x00ff0000;
-            sp[(i + 1) % 4] ^= n & 0x0000ff00;
-            sp[i % 4]       ^= n & 0x000000ff;
-        }
+
+        ubyte tmp = s.bytes[0x1];
+        s.bytes[0x1] = s.bytes[0x5];
+        s.bytes[0x5] = s.bytes[0x9];
+        s.bytes[0x9] = s.bytes[0xd];
+        s.bytes[0xd] = tmp;
+
+        tmp = s.bytes[0x2];
+        s.bytes[0x2] = s.bytes[0xa];
+        s.bytes[0xa] = tmp;
+        tmp = s.bytes[0x6];
+        s.bytes[0x6] = s.bytes[0xe];
+        s.bytes[0xe] = tmp;
+
+        tmp = s.bytes[0x3];
+        s.bytes[0x3] = s.bytes[0xf];
+        s.bytes[0xf] = s.bytes[0xb];
+        s.bytes[0xb] = s.bytes[0x7];
+        s.bytes[0x7] = tmp;
+
         long tEnd = Clock.currStdTime();
         shiftRowsTime += (tEnd - tStart);
-        return sp;
-    }
-    
-    private static State invShiftRows(State s)
-    {
-        State sp = [0, 0, 0, 0];
-        foreach (uint i, uint n; s)
-        {
-            sp[(i + 1) % 4] ^= n & 0xff000000;
-            sp[(i + 2) % 4] ^= n & 0x00ff0000;
-            sp[(i + 3) % 4] ^= n & 0x0000ff00;
-            sp[i % 4]       ^= n & 0x000000ff;
-        }
-        return sp;
     }
 
-    unittest {
-        State a = [0x7b5b5465, 0x73745665, 0x63746f72, 0x5d53475d];
-        State b = [0x73744765, 0x63535465, 0x5d5b5672, 0x7b746f5d];
-        State c = [0x5d745665, 0x7b536f65, 0x735b4772, 0x6374545d];
-
-        assert(shiftRows(a) == b, "ShiftRows");
-        assert(invShiftRows(a) == c, "InvShiftRows");
-    }
-
-    // Multiplication under GF(256)
-    // Could perhaps do lookup for this? Needs benchmarking
-    private static ubyte xtimes(ubyte a, ubyte b)
-    {
-        ubyte tmp = b;
-        ubyte res = 0x0;
-        if ((a & 0x01) != 0) res = b;
-        foreach (uint c; [0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80]) {
-            tmp = xtime(tmp); // b * { 02, 04, 08, 10, 20, 40, 80 }
-            if ((a & c) != 0) {
-                res ^= tmp;
-            }
-        }
-        return res;
-    }
-
-    private static ubyte xtime(ubyte b) {
-        ubyte a = cast(ubyte)(b << 1);
-        if ((b & 0b10000000) == 0b10000000) return cast(ubyte)(a ^ 0x1b);
-        return a;
-    };
-
-    private static State mixColumns(State s)
-    {
-        long tStart = Clock.currStdTime();
-        State sp = [0, 0, 0, 0];
-        for (uint i = 0; i < 4; ++i)
-        {
-            ubyte a = (s[i] & 0x000000ff);
-            ubyte b = (s[i] & 0x0000ff00) >> 8;
-            ubyte c = (s[i] & 0x00ff0000) >> 16;
-            ubyte d = (s[i] & 0xff000000) >>> 24;
-            sp[i] |= x_0x02[a] ^ x_0x03[b] ^ c ^ d;
-            sp[i] |= (a ^  x_0x02[b] ^ x_0x03[c] ^ d) << 8;
-            sp[i] |= (a ^ b ^  x_0x02[c] ^ x_0x03[d]) << 16;
-            sp[i] |= (x_0x03[a] ^ b ^ c ^  x_0x02[d]) << 24;
-        }
-        long tEnd = Clock.currStdTime();
-        mixColumnsTime += (tEnd - tStart);
-
-        return sp;
-    }
-
-    private static State invMixColumns(State s)
-    {
-        State sp = [0, 0, 0, 0];
-        for (uint i = 0; i < 4; ++i)
-        {
-            ubyte a = (s[i] & 0x000000ff);
-            ubyte b = (s[i] & 0x0000ff00) >> 8;
-            ubyte c = (s[i] & 0x00ff0000) >> 16;
-            ubyte d = (s[i] & 0xff000000) >>> 24;
-            sp[i] |= x_0x0e[a] ^ x_0x0b[b] ^ x_0x0d[c] ^ x_0x09[d];
-            sp[i] |= (x_0x09[a] ^ x_0x0e[b] ^ x_0x0b[c] ^ x_0x0d[d]) << 8;
-            sp[i] |= (x_0x0d[a] ^ x_0x09[b] ^ x_0x0e[c] ^ x_0x0b[d]) << 16;
-            sp[i] |= (x_0x0b[a] ^ x_0x0d[b] ^ x_0x09[c] ^ x_0x0e[d]) << 24;
-        }
-        return sp;
-    }
-/*
     unittest
     {
-        // Print xtimes table
-        foreach (ubyte b; cast(ubyte[])[0x02, 0x03, 0x09, 0x0b, 0x0d, 0x0e])
+        State a, b;
+        a.bytes = cast(ubyte[16]) x"63cab7040953d051cd60e0e7ba70e18c";
+        b.bytes = cast(ubyte[16]) x"6353e08c0960e104cd70b751bacad0e7";
+        shiftRows(a);
+        assert(a == b);
+    }
+
+    private static void invShiftRows(ref State s)
+    {
+        ubyte tmp = s.bytes[0xd];
+        s.bytes[0xd] = s.bytes[0x9];
+        s.bytes[0x9] = s.bytes[0x5];
+        s.bytes[0x5] = s.bytes[0x1];
+        s.bytes[0x1] = tmp;
+
+        tmp = s.bytes[0x2];
+        s.bytes[0x2] = s.bytes[0xa];
+        s.bytes[0xa] = tmp;
+        tmp = s.bytes[0x6];
+        s.bytes[0x6] = s.bytes[0xe];
+        s.bytes[0xe] = tmp;
+
+        tmp = s.bytes[0x3];
+        s.bytes[0x3] = s.bytes[0x7];
+        s.bytes[0x7] = s.bytes[0xb];
+        s.bytes[0xb] = s.bytes[0xf];
+        s.bytes[0xf] = tmp;
+    }
+
+    unittest
+    {
+        State a, b;
+        a.bytes = cast(ubyte[16]) x"7ad5fda789ef4e272bca100b3d9ff59f";
+        b.bytes = cast(ubyte[16]) x"7a9f102789d5f50b2beffd9f3dca4ea7";
+        invShiftRows(a);
+        assert(a == b);
+    }
+
+    private static void mixColumns(ref State s)
+    {
+        long tStart = Clock.currStdTime();
+
+        for (int col = 0; col < 4; ++col)
         {
-            std.stdio.write(b);
-            std.stdio.writeln("table = [");
-            for (int i = 0; i < 256; ++i)
-            {
-                if (i % 16 == 0 && i != 0)
-                    std.stdio.writeln();
-                std.stdio.write(xtimes(b, cast(ubyte)i)); std.stdio.write(", ");
-            }
-            std.stdio.writeln("];");
+            ubyte a = s.bytes[col*4];
+            ubyte b = s.bytes[col*4+1];
+            ubyte c = s.bytes[col*4+2];
+            ubyte d = s.bytes[col*4+3];
+            s.bytes[col*4]   = x_0x02[a] ^ x_0x03[b] ^ c ^ d;
+            s.bytes[col*4+1] = a ^ x_0x02[b] ^ x_0x03[c] ^ d;
+            s.bytes[col*4+2] = a ^ b ^ x_0x02[c] ^ x_0x03[d];
+            s.bytes[col*4+3] = x_0x03[a] ^ b ^ c ^  x_0x02[d];
         }
-    }*/
+
+        long tEnd = Clock.currStdTime();
+        mixColumnsTime += (tEnd - tStart);
+    }
+
+    private static void invMixColumns(ref State s)
+    {
+        for (uint col = 0; col < 4; ++col)
+        {
+            ubyte a = s.bytes[col*4];
+            ubyte b = s.bytes[col*4+1];
+            ubyte c = s.bytes[col*4+2];
+            ubyte d = s.bytes[col*4+3];
+            s.bytes[col*4]   = x_0x0e[a] ^ x_0x0b[b] ^ x_0x0d[c] ^ x_0x09[d];
+            s.bytes[col*4+1] = x_0x09[a] ^ x_0x0e[b] ^ x_0x0b[c] ^ x_0x0d[d];
+            s.bytes[col*4+2] = x_0x0d[a] ^ x_0x09[b] ^ x_0x0e[c] ^ x_0x0b[d];
+            s.bytes[col*4+3] = x_0x0b[a] ^ x_0x0d[b] ^ x_0x09[c] ^ x_0x0e[d];
+        }
+    }
 
     unittest 
     {
-        assert(xtime(0x57) == 0xae);
-        assert(xtime(0xae) == 0x47);
-        assert(xtime(0x47) == 0x8e);
-        assert(xtime(0x8e) == 0x07);
+        State a, b;
+        a.bytes = cast(ubyte[16]) x"6353e08c0960e104cd70b751bacad0e7";
+        b.bytes = cast(ubyte[16]) x"5f72641557f5bc92f7be3b291db9f91a";
+        mixColumns(a);
+        assert(a == b);
 
-        assert(xtime(0x57) == xtimes(0x02, 0x57));
-        assert(xtimes(0x13, 0x57) == 0xfe);
-
-        State a = [0x627a6f66, 0x44b109c8, 0x2b18330a, 0x81c3b3e5];
-        State b = [0x7b5b5465, 0x73745665, 0x63746f72, 0x5d53475d];
-        assert(mixColumns(a) == b, "MixColumns");
-
-        State c = [0x8dcab9dc, 0x035006bc, 0x8f57161e, 0x00cafd8d];
-        State d = [0xd635a667, 0x928b5eae, 0xeec9cc3b, 0xc55f5777];
-        assert(invMixColumns(c) == d, "InvMixColumns");
+        State c, d;
+        c.bytes = cast(ubyte[16]) x"fde3bad205e5d0d73547964ef1fe37f1";
+        d.bytes = cast(ubyte[16]) x"2d7e86a339d9393ee6570a1101904e16";
+        invMixColumns(c);
+        assert(c == d);
     }
 
     private static uint subWord(uint w)
@@ -546,13 +550,8 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
 
     private void keyExpansion(ubyte[4*Nk] k)
     {
-        uint[Nb*(Nr+1)] w;
-
-        // Round key constants
         static const uint[10] rCon = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36];
 
-        // First round key(s) is a copy of the original key (reverse bytes internally)
-        // Still in reverse word order from xmm layout (to make indexing easy)
         uint i = 0;
         while (i < Nk)
         {
@@ -573,44 +572,25 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
             w[i] = w[i - Nk] ^ tmp;
             ++i;
         }
-
-        // Rotate back words (could remove this if we don't use Intel ordering)
-        for (uint j = 0; j < Nr + 1; ++j)
-            key[j] = [w[4*j+3], w[4*j+2], w[4*j+1], w[4*j]];
     }
 
-    // Utility
-    private static ubyte[4*Nb] reverseBytes(ubyte[] b)
+    unittest
     {
-        ubyte[4*Nb] res;
-        for (uint i = 0; i < 4*Nb; ++i)
-            res[i] = b[4*Nb-1-i];
-        return res;
-    }
-
-    private static uint[4] bytesToWords(ubyte[4*Nb] b)
-    {
-        uint[4] str;
-        for (uint i = 0; i < 4; ++i)
-            str[i] = b[4*i] << 24 | b[4*i+1] << 16 | b[4*i+2] << 8 | b[4*i+3];
-        return str;
-    }
-
-    private static ubyte[4*Nb] wordsToBytes(uint[4] w)
-    {
-        ubyte[4*Nb] bytes;
-        foreach (uint i, uint n; w)
-        {
-            bytes[4*i] = (n & 0xff000000) >> 24;
-            bytes[4*i+1] = (n & 0x00ff0000) >> 16;
-            bytes[4*i+2] = (n & 0x0000ff00) >> 8;
-            bytes[4*i+3] = (n & 0x000000ff);
-        }
-        return bytes;
+        // TODO 
     }
 }
 
+
 // -- Debug stuff --
+
+private static void printHex(uint round, string s, ubyte[] b)
+{
+    write("round["); write(round); write("]."~s~"\t");
+    write(byteToHexString(b));
+    //for (uint i = 0; i < b.length; ++i)
+    //    write(wordToString(b[i]));
+    writeln("");
+}
 
 private static void printHex(uint round, string s, uint[] b)
 {
@@ -641,6 +621,32 @@ auto byteToHexString(ubyte[] s) // 0..256
     }
 
     return res;
+}
+
+void AESspeedBenchmark()
+{
+    auto blockCipher = new AES128(cast(ubyte[16]) x"63cab7040953d051cd60e0e7ba70e18c");
+    auto message = new ubyte[16];
+    auto outputBuffer = new ubyte[16];
+
+    std.stdio.writeln("Running AES benchmark");
+
+    int megaBytes = 10;
+    int iterations = megaBytes*1024*1024 / 16;
+
+    long tStart = Clock.currStdTime();
+
+    for (int i = 0; i < iterations; ++i)
+    {
+        blockCipher.encrypt(message);
+    }
+
+    long tEnd = Clock.currStdTime();
+    long encryptTime = tEnd - tStart;
+
+    write("Encryption time: "); write(encryptTime / 10000000.0); writeln(" seconds");
+    blockCipher.reportTiming();
+    std.stdio.write("Throughput: "); std.stdio.write(megaBytes / (encryptTime / 10000000.0)); writeln(" MB/s");
 }
 
 // -- End debug stuff --

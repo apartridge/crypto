@@ -103,7 +103,9 @@ void execute(string[] args)
         switch (benchmark)
         {
             case "aes-128-ecb":
-                auto k = parseHexString!(16)(key);
+                AESspeedBenchmark();
+                break;
+                /*auto k = parseHexString!(16)(key);
                 auto ecb = new ECB(new AES128(k));
 
                 long tStart = Clock.currStdTime();
@@ -114,7 +116,7 @@ void execute(string[] args)
                 auto sec = (tEnd - tStart) / 10000000.0;
                 write("Duration: "); writeln(dur!"hnsecs"(tEnd - tStart));
                 write("Throughput: "); write(mb / sec); writeln(" MB/s");
-                break;
+                break;*/
             default:
                 writeln("Valid parameters for --benchmark: \naes-128-ecb");
         }

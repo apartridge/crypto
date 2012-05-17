@@ -22,48 +22,46 @@ class ECB : SymmetricScheme
     public void encrypt(InputStream input, OutputStream output)
     {
         const uint blockSize = blockCipher.blockSize();
-        ubyte[] inBuffer  = new ubyte[blockSize];
-        ubyte[] outBuffer = new ubyte[blockSize];
+        ubyte[] buffer = new ubyte[blockSize];
         uint bytesRead;
         long encryptTime = 0;
 
         // Encrypt all whole blocks
-        while ((bytesRead = input.read(inBuffer)) == blockSize)
+        while ((bytesRead = input.read(buffer)) == blockSize)
         {
             long tStart = Clock.currStdTime();
-            blockCipher.encrypt(inBuffer, outBuffer);
+            blockCipher.encrypt(buffer);
             long tEnd = Clock.currStdTime();
             encryptTime += (tEnd - tStart);
-            output.write(outBuffer);
+            output.write(buffer);
         }
 
         // Pad last block with number of padding bytes (PKCS#5)
         ubyte paddingByte = cast(ubyte)(blockSize - bytesRead);
         for (uint i = bytesRead; i < blockSize; ++i)
-            inBuffer[i] = paddingByte;
-        blockCipher.encrypt(inBuffer, outBuffer);
-        output.write(outBuffer);
+            buffer[i] = paddingByte;
+        blockCipher.encrypt(buffer);
+        output.write(buffer);
 
-        write("Encryption time: "); write(encryptTime / 10000000.0); writeln(" seconds");
-        blockCipher.reportTiming();
+        //write("Encryption time: "); write(encryptTime / 10000000.0); writeln(" seconds");
+        //blockCipher.reportTiming();
     }
     
     public void decrypt(InputStream input, OutputStream output)
     {
         const uint blockSize = blockCipher.blockSize();
-        ubyte[] inBuffer  = new ubyte[blockSize];
-        ubyte[] outBuffer = new ubyte[blockSize];
+        ubyte[] buffer = new ubyte[blockSize];
 
-        while (input.read(inBuffer))
+        while (input.read(buffer))
         {
-            blockCipher.decrypt(inBuffer, outBuffer);
+            blockCipher.decrypt(buffer);
 
             // Remove padding in last block
             if (input.eof())
             {
-                outBuffer = outBuffer[0 .. (blockSize-outBuffer[blockSize-1])];
+                buffer = buffer[0 .. (blockSize-buffer[blockSize-1])];
             }
-            output.write(outBuffer);
+            output.write(buffer);
         }
     }
 
