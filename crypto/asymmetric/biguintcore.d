@@ -122,6 +122,63 @@ public:
         }
     }
 
+    // Number of trailing zero bits. Not defined for 0
+
+    size_t trailingZeroBits() pure const
+    {
+        ulong leastsig = void;
+        size_t zeros = 0, i = 0;
+
+        while( (leastsig = peekUlong(i++) ) == 0)
+        {
+            zeros += 8*ulong.sizeof;
+        }
+
+        for(i = 0; i < 8*ulong.sizeof && ( (leastsig >> i) & 1 ) == 0 ; i++)
+        {
+            zeros++;
+        }
+
+        return zeros;
+    }
+
+    // Number of bits needed for binary representation of this number
+    size_t bitLength() pure const
+    {
+        size_t length = uintLength();
+        size_t bits = length*uint.sizeof*8;
+
+        if(length == 1 && this.peekUlong(0) == 0)
+        {
+            return 0;
+        }
+
+        uint last = peekUint(length-1);
+
+        if (!(last & 0xffff0000)) {
+            last = last << 16;
+            bits -= 16;
+        }
+        if (!(last & 0xff000000)) {
+            last = last << 8;
+            bits -= 8;
+        }
+        if (!(last & 0xf0000000)) {
+            last = last << 4;
+            bits -= 4;
+        }
+        if (!(last & 0xc0000000)) {
+            last = last << 2;
+            bits -= 2;
+        }
+        if (!(last & 0x80000000)) {
+            last = last << 1;
+            bits -= 1;
+        }
+
+        return bits;
+    }
+
     // The value at (cast(ulong[])data)[n]
     ulong peekUlong(int n) pure const
     {
