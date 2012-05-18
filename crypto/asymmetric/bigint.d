@@ -459,6 +459,39 @@ public:
         return data.ulongLength();
     }
 
+    // 
+    @property size_t trailingZeroBits() pure const
+    {
+        return data.trailingZeroBits();
+    }
+
+    unittest
+    {
+        ubyte[] test = [0x00,0x00, 1, 0x00,    0x00, 0x00, 0x00, 0x00,    0x00, 0x00, 0x00, 0x00];
+        assert(BigInt(test).trailingZeroBits == 64+8, "Incorrect number of trailing zero bits.");
+        assert(BigInt(16).trailingZeroBits == 4, "Incorrect number of trailing zero bits.");
+        assert(BigInt(17).trailingZeroBits == 0, "Incorrect number of trailing zero bits.");
+        assert(BigInt(2).trailingZeroBits == 1, "Incorrect number of trailing zero bits.");
+    }
+
+    // Number of bits needed to binary represent this number
+    // So, bitLength of "2" is 2, "7" is 3, "255" is 8.
+
+    @property size_t bitLength() pure const
+    {
+        return data.bitLength();
+    }
+
+    unittest
+    {        
+        ubyte[] test = [0x00,0x00, 1, 0x00,    0x00, 0x00, 0x00, 0x00,    0x00, 0x00, 0x00, 0x00];
+        assert(BigInt(test).bitLength == 64+8+1, "Bitlength is not correct.");
+        assert(BigInt(0).bitLength == 0, "Bitlength is not correct.");
+        assert(BigInt(7).bitLength == 3, "Bitlength is not correct.");
+        assert(BigInt(255).bitLength == 8, "Bitlength is not correct.");
+        assert(BigInt(2483).bitLength == 12, "Bitlength is not correct.");
+    }
+
     /** Convert the BigInt to string, passing it to 'sink'.
     *
     * $(TABLE  The output format is controlled via formatString:
