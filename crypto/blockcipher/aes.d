@@ -6,7 +6,7 @@ import std.datetime;
 
 public interface BlockCipher
 {
-    public void encrypt(ref ubyte[] message);
+    public void encrypt(ubyte[] message);
     public void decrypt(ref ubyte[] cipher);
 
     @property public const uint blockSize();
@@ -26,13 +26,13 @@ public interface BlockCipher
 
 class AES128 : AES!(4, 4, 10)
 {
-    this(ubyte[16] key) { super(key); }
+    this(ubyte[] key) { super(key); }
 
     unittest
     {
-        auto key     = cast(ubyte[16]) x"000102030405060708090a0b0c0d0e0f";
-        auto message = cast(ubyte[16]) x"00112233445566778899aabbccddeeff";
-        auto cipher  = cast(ubyte[16]) x"69c4e0d86a7b0430d8cdb78070b4c55a";
+        auto key     = cast(ubyte[]) x"000102030405060708090a0b0c0d0e0f";
+        auto message = cast(ubyte[]) x"00112233445566778899aabbccddeeff";
+        auto cipher  = cast(ubyte[]) x"69c4e0d86a7b0430d8cdb78070b4c55a";
         ubyte[] buffer = message.dup;
 
         auto aes = new AES128(key);
@@ -47,7 +47,7 @@ class AES128 : AES!(4, 4, 10)
 
 class AES192 : AES!(4, 6, 12)
 {
-    this(ubyte[24] key) { super(key); }
+    this(ubyte[] key) { super(key); }
 
     unittest
     {
@@ -68,7 +68,7 @@ class AES192 : AES!(4, 6, 12)
 
 class AES256 : AES!(4, 8, 14)
 {
-    this(ubyte[32] key) { super(key); }
+    this(ubyte[] key) { super(key); }
 
     unittest
     {
@@ -101,6 +101,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         uint[Nb] words;
         ubyte[4*Nb] bytes;
     }
+    //alias ubyte[] State;
 
     // Generate and store one key per round
     protected Key[Nr+1] key;
@@ -262,9 +263,10 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         return Nb*4;
     }
 
-    public this(ubyte[4*Nk] k)
+    public this(ubyte[] k)
     {
-        keyExpansion( k );
+        assert(k.length == 4*Nk);
+        keyExpansion( k[0 .. 4*Nk] );
     }
 
     public static long subBytesTime;
@@ -283,11 +285,12 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         std.stdio.write("Copy overhead: "); std.stdio.write(copyTime / 10000000.0); writeln(" seconds");
     }
 
-    public void encrypt(ref ubyte[] message)
+    public void encrypt(ubyte[] message)
     {
         long tStart = Clock.currStdTime();
+        // Slicing, should not copy. But it does because State is value-type
         State state;
-        state.bytes = message;
+        state.bytes = message[0 .. 4*Nb]; 
         long tEnd = Clock.currStdTime();
         copyTime += (tEnd - tStart);
 
@@ -357,8 +360,14 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
     {
         long tStart = Clock.currStdTime();
 
+        // Be clever, cast to int pointer and slice into int array. No copying
+        uint* intptr = cast(uint*)s.bytes.ptr;
+        uint[] intstate = intptr[0 .. Nb];
+
         for (int i = 0; i < Nb; ++i)
-            s.words[i] ^= k[i];
+        {
+            intstate[i] ^= k[i];
+        }
 
         long tEnd = Clock.currStdTime();
         addRoundKeyTime += (tEnd - tStart);
@@ -548,7 +557,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         assert(rotWord(0x3c4fcf09) == 0x093c4fcf);
     }
 
-    private void keyExpansion(ubyte[4*Nk] k)
+    private void keyExpansion(ubyte[] k)
     {
         static const uint[10] rCon = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36];
 
