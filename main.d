@@ -103,10 +103,9 @@ void execute(string[] args)
         switch (benchmark)
         {
             case "aes-128-ecb":
-                AESspeedBenchmark();
-                break;
-                /*auto k = parseHexString!(16)(key);
-                auto ecb = new ECB(new AES128(k));
+                auto k = parseHexString!(16)(key);
+                auto aes = new AES128(k);
+                auto ecb = new ECB(aes);
 
                 long tStart = Clock.currStdTime();
                 ecb.encrypt(inStream, outStream);
@@ -114,11 +113,14 @@ void execute(string[] args)
 
                 auto mb = inputFileLength/(1024.0*1024.0);
                 auto sec = (tEnd - tStart) / 10000000.0;
+                aes.reportTiming(tEnd - tStart);
                 write("Duration: "); writeln(dur!"hnsecs"(tEnd - tStart));
                 write("Throughput: "); write(mb / sec); writeln(" MB/s");
-                break;*/
+                break;
             default:
+                AESspeedBenchmark();
                 writeln("Valid parameters for --benchmark: \naes-128-ecb");
+                break;
         }
     }
 

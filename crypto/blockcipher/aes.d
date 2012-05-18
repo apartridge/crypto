@@ -3,16 +3,14 @@ module crypto.blockcipher.aes;
 import std.stdio, std.bitmanip;
 import std.datetime;
 
-
 public interface BlockCipher
 {
     public void encrypt(ubyte[] message);
-    public void decrypt(ref ubyte[] cipher);
+    public void decrypt(ubyte[] cipher);
 
     @property public const uint blockSize();
-    public void reportTiming();
+    public void reportTiming(long);
 }
-
 
 /* 
  * AES standard: http://csrc.nist.gov/publications/fips/fips197/fips-197.pdf
@@ -23,7 +21,6 @@ public interface BlockCipher
  * Keys: 128, 192 or 256 bit
  *
  */
-
 class AES128 : AES!(4, 4, 10)
 {
     this(ubyte[] key) { super(key); }
@@ -92,19 +89,8 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
     (Nb == 4 && Nk == 6 && Nr == 12) ||
     (Nb == 4 && Nk == 8 && Nr == 14)) : BlockCipher
 {
-    alias uint[Nb] Key;
-
+    alias ubyte[] State;
     uint[Nb*(Nr+1)] w;
-
-    union State
-    {
-        uint[Nb] words;
-        ubyte[4*Nb] bytes;
-    }
-    //alias ubyte[] State;
-
-    // Generate and store one key per round
-    protected Key[Nr+1] key;
 
     static const ubyte[] sbox = [
         0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -269,76 +255,69 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         keyExpansion( k[0 .. 4*Nk] );
     }
 
+    // -- Debug timing --
+
     public static long subBytesTime;
     public static long shiftRowsTime;
     public static long mixColumnsTime;
     public static long addRoundKeyTime;
-    public static long copyTime;
+    public static long overhead;
 
-    public void reportTiming()
+    public void reportTiming(long totalTime)
     {
         std.stdio.writeln("AES encrypt timings:");
         std.stdio.write("Sub Bytes: "); std.stdio.write(subBytesTime / 10000000.0); writeln(" seconds");
         std.stdio.write("Shift Rows: "); std.stdio.write(shiftRowsTime / 10000000.0); writeln(" seconds");
         std.stdio.write("Mix Columns: "); std.stdio.write(mixColumnsTime / 10000000.0); writeln(" seconds");
         std.stdio.write("Add Round Key: "); std.stdio.write(addRoundKeyTime / 10000000.0); writeln(" seconds");
-        std.stdio.write("Copy overhead: "); std.stdio.write(copyTime / 10000000.0); writeln(" seconds");
+
+        long sumTime = subBytesTime+shiftRowsTime+mixColumnsTime+addRoundKeyTime;
+        std.stdio.write("Sum: "); std.stdio.write( sumTime / 10000000.0 ); writeln(" seconds");
+        std.stdio.write("Overhead: "); std.stdio.write( (totalTime - sumTime) / 10000000.0); writeln(" seconds");
     }
+
+    // -- End timing --
 
     public void encrypt(ubyte[] message)
     {
-        long tStart = Clock.currStdTime();
-        // Slicing, should not copy. But it does because State is value-type
-        State state;
-        state.bytes = message[0 .. 4*Nb]; 
-        long tEnd = Clock.currStdTime();
-        copyTime += (tEnd - tStart);
-
-        //std.stdio.writeln(wordToString(0x00112233));
-        //std.stdio.writeln(byteToHexString(state.bytes));
-        //printHex(0, "input", state.bytes);
+        State state = message[0 .. 4*Nb]; // Slicing, no copy
+        //printHex(0, "input", state);
 
         addRoundKey(state, w[0 .. Nb]); // key[0]
         //printHex(0, "k_sch", w[0 .. Nb]);
-        //printHex(0, "start", state.bytes);
+        //printHex(0, "start", state);
 
         uint round = 0;
         while (round++ < Nr - 1)
         {
             subBytes(state);
-            //printHex(round, "s_box", state.bytes);
+            //printHex(round, "s_box", state);
 
             shiftRows(state);
-            //printHex(round, "s_row", state.bytes);
+            //printHex(round, "s_row", state);
 
             mixColumns(state);
-            //printHex(round, "m_col", state.bytes);
+            //printHex(round, "m_col", state);
             //printHex(round, "k_sch", w[round*Nb .. (round+1)*Nb]);
 
             addRoundKey(state, w[round*Nb .. (round+1)*Nb]); //key[round]
-            //printHex(round, "start", state.bytes);
+            //printHex(round, "start", state);
 
         }
         subBytes(state);
-        //printHex(round, "s_box", state.bytes);
+        //printHex(round, "s_box", state);
 
         shiftRows(state);
-        //printHex(round, "s_row", state.bytes);
+        //printHex(round, "s_row", state);
         //printHex(round, "k_sch", w[Nr*Nb .. (Nr+1)*Nb]);
 
         addRoundKey(state, w[Nr*Nb .. (Nr+1)*Nb]); // key[round]
-        //printHex(round, "output", state.bytes);
-
-        tStart = Clock.currStdTime();
-        message[0 .. state.bytes.length] = state.bytes;
-        tEnd = Clock.currStdTime();
-        copyTime += (tEnd - tStart);
+        //printHex(round, "output", state);
     }
 
-    public void decrypt(ref ubyte[] cipher)
+    public void decrypt(ubyte[] cipher)
     {
-        State state;
-        state.bytes = cipher[0 .. 16];
+        State state = cipher[0 .. 4*Nb];
         
         addRoundKey(state, w[Nr*Nb .. (Nr+1)*Nb]);
 
@@ -352,16 +331,14 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         invShiftRows(state);
         invSubBytes(state);
         addRoundKey(state, w[0 .. Nb]);
-
-        cipher[0 .. state.bytes.length] = state.bytes;
     }
 
-    private static void addRoundKey(ref State s, ref uint[] k)
+    private static void addRoundKey(State s, ref uint[] k)
     {
         long tStart = Clock.currStdTime();
 
         // Be clever, cast to int pointer and slice into int array. No copying
-        uint* intptr = cast(uint*)s.bytes.ptr;
+        uint* intptr = cast(uint*)s.ptr;
         uint[] intstate = intptr[0 .. Nb];
 
         for (int i = 0; i < Nb; ++i)
@@ -375,20 +352,20 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
 
     unittest 
     {
-        State a, b;
-        a.bytes = cast(ubyte[16]) x"00112233445566778899aabbccddeeff";
-        b.bytes = cast(ubyte[16]) x"00102030405060708090a0b0c0d0e0f0";
+        State a = cast(ubyte[]) x"00112233445566778899aabbccddeeff".dup;
+        State b = cast(ubyte[]) x"00102030405060708090a0b0c0d0e0f0";
         uint[] key = [0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c];
+
         addRoundKey(a, key);
         assert(a == b);
     }
 
-    private static void subBytes(ref State s, ref const ubyte[] b = sbox)
+    private static void subBytes(State s, ref const ubyte[] b = sbox)
     {
         long tStart = Clock.currStdTime();
         for (uint i = 0; i < Nb*4; ++i)
         {
-            s.bytes[i] = b[s.bytes[i]];
+            s[i] = b[s[i]];
         }
         long tEnd = Clock.currStdTime();
         subBytesTime += (tEnd - tStart);
@@ -401,13 +378,12 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
 
     unittest
     {
-        State a, b, c;
-        a.bytes = cast(ubyte[16]) x"73744765635354655d5b56727b746f5d";
-        b.bytes = cast(ubyte[16]) x"8f92a04dfbed204d4c39b1402192a84c";
-        c.bytes = cast(ubyte[16]) x"73744765635354655d5b56727b746f5d";
+        State a = cast(ubyte[]) x"73744765635354655d5b56727b746f5d".dup;
+        State b = cast(ubyte[]) x"8f92a04dfbed204d4c39b1402192a84c".dup;
+        State c = cast(ubyte[]) x"73744765635354655d5b56727b746f5d";
 
         subBytes(a);
-        assert(a == b);
+        assert(a == b, byteToHexString(a));
 
         invSubBytes(b);
         assert(b == c);
@@ -417,28 +393,28 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
      * The three last rows (columns in memory layout(!)) are rotated 1, 2, 3 steps
      * NB: This works for little-endian. Need special case for big endian
      */
-    private static void shiftRows(ref State s)
+    private static void shiftRows(State s)
     {
         long tStart = Clock.currStdTime();
 
-        ubyte tmp = s.bytes[0x1];
-        s.bytes[0x1] = s.bytes[0x5];
-        s.bytes[0x5] = s.bytes[0x9];
-        s.bytes[0x9] = s.bytes[0xd];
-        s.bytes[0xd] = tmp;
+        ubyte tmp = s[0x1];
+        s[0x1] = s[0x5];
+        s[0x5] = s[0x9];
+        s[0x9] = s[0xd];
+        s[0xd] = tmp;
 
-        tmp = s.bytes[0x2];
-        s.bytes[0x2] = s.bytes[0xa];
-        s.bytes[0xa] = tmp;
-        tmp = s.bytes[0x6];
-        s.bytes[0x6] = s.bytes[0xe];
-        s.bytes[0xe] = tmp;
+        tmp = s[0x2];
+        s[0x2] = s[0xa];
+        s[0xa] = tmp;
+        tmp = s[0x6];
+        s[0x6] = s[0xe];
+        s[0xe] = tmp;
 
-        tmp = s.bytes[0x3];
-        s.bytes[0x3] = s.bytes[0xf];
-        s.bytes[0xf] = s.bytes[0xb];
-        s.bytes[0xb] = s.bytes[0x7];
-        s.bytes[0x7] = tmp;
+        tmp = s[0x3];
+        s[0x3] = s[0xf];
+        s[0xf] = s[0xb];
+        s[0xb] = s[0x7];
+        s[0x7] = tmp;
 
         long tEnd = Clock.currStdTime();
         shiftRowsTime += (tEnd - tStart);
@@ -446,90 +422,90 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
 
     unittest
     {
-        State a, b;
-        a.bytes = cast(ubyte[16]) x"63cab7040953d051cd60e0e7ba70e18c";
-        b.bytes = cast(ubyte[16]) x"6353e08c0960e104cd70b751bacad0e7";
+        State a = cast(ubyte[]) x"63cab7040953d051cd60e0e7ba70e18c".dup;
+        State b = cast(ubyte[]) x"6353e08c0960e104cd70b751bacad0e7";
+
         shiftRows(a);
         assert(a == b);
     }
 
-    private static void invShiftRows(ref State s)
+    private static void invShiftRows(State s)
     {
-        ubyte tmp = s.bytes[0xd];
-        s.bytes[0xd] = s.bytes[0x9];
-        s.bytes[0x9] = s.bytes[0x5];
-        s.bytes[0x5] = s.bytes[0x1];
-        s.bytes[0x1] = tmp;
+        ubyte tmp = s[0xd];
+        s[0xd] = s[0x9];
+        s[0x9] = s[0x5];
+        s[0x5] = s[0x1];
+        s[0x1] = tmp;
 
-        tmp = s.bytes[0x2];
-        s.bytes[0x2] = s.bytes[0xa];
-        s.bytes[0xa] = tmp;
-        tmp = s.bytes[0x6];
-        s.bytes[0x6] = s.bytes[0xe];
-        s.bytes[0xe] = tmp;
+        tmp = s[0x2];
+        s[0x2] = s[0xa];
+        s[0xa] = tmp;
+        tmp = s[0x6];
+        s[0x6] = s[0xe];
+        s[0xe] = tmp;
 
-        tmp = s.bytes[0x3];
-        s.bytes[0x3] = s.bytes[0x7];
-        s.bytes[0x7] = s.bytes[0xb];
-        s.bytes[0xb] = s.bytes[0xf];
-        s.bytes[0xf] = tmp;
+        tmp = s[0x3];
+        s[0x3] = s[0x7];
+        s[0x7] = s[0xb];
+        s[0xb] = s[0xf];
+        s[0xf] = tmp;
     }
 
     unittest
     {
-        State a, b;
-        a.bytes = cast(ubyte[16]) x"7ad5fda789ef4e272bca100b3d9ff59f";
-        b.bytes = cast(ubyte[16]) x"7a9f102789d5f50b2beffd9f3dca4ea7";
+        State a = cast(ubyte[]) x"7ad5fda789ef4e272bca100b3d9ff59f".dup;
+        State b = cast(ubyte[]) x"7a9f102789d5f50b2beffd9f3dca4ea7";
+
         invShiftRows(a);
         assert(a == b);
     }
 
-    private static void mixColumns(ref State s)
+    private static void mixColumns(State s)
     {
         long tStart = Clock.currStdTime();
 
         for (int col = 0; col < 4; ++col)
         {
-            ubyte a = s.bytes[col*4];
-            ubyte b = s.bytes[col*4+1];
-            ubyte c = s.bytes[col*4+2];
-            ubyte d = s.bytes[col*4+3];
-            s.bytes[col*4]   = x_0x02[a] ^ x_0x03[b] ^ c ^ d;
-            s.bytes[col*4+1] = a ^ x_0x02[b] ^ x_0x03[c] ^ d;
-            s.bytes[col*4+2] = a ^ b ^ x_0x02[c] ^ x_0x03[d];
-            s.bytes[col*4+3] = x_0x03[a] ^ b ^ c ^  x_0x02[d];
+            ubyte a = s[col*4];
+            ubyte b = s[col*4+1];
+            ubyte c = s[col*4+2];
+            ubyte d = s[col*4+3];
+            s[col*4]   = x_0x02[a] ^ x_0x03[b] ^ c ^ d;
+            s[col*4+1] = a ^ x_0x02[b] ^ x_0x03[c] ^ d;
+            s[col*4+2] = a ^ b ^ x_0x02[c] ^ x_0x03[d];
+            s[col*4+3] = x_0x03[a] ^ b ^ c ^  x_0x02[d];
         }
 
         long tEnd = Clock.currStdTime();
         mixColumnsTime += (tEnd - tStart);
     }
 
-    private static void invMixColumns(ref State s)
+    private static void invMixColumns(State s)
     {
         for (uint col = 0; col < 4; ++col)
         {
-            ubyte a = s.bytes[col*4];
-            ubyte b = s.bytes[col*4+1];
-            ubyte c = s.bytes[col*4+2];
-            ubyte d = s.bytes[col*4+3];
-            s.bytes[col*4]   = x_0x0e[a] ^ x_0x0b[b] ^ x_0x0d[c] ^ x_0x09[d];
-            s.bytes[col*4+1] = x_0x09[a] ^ x_0x0e[b] ^ x_0x0b[c] ^ x_0x0d[d];
-            s.bytes[col*4+2] = x_0x0d[a] ^ x_0x09[b] ^ x_0x0e[c] ^ x_0x0b[d];
-            s.bytes[col*4+3] = x_0x0b[a] ^ x_0x0d[b] ^ x_0x09[c] ^ x_0x0e[d];
+            ubyte a = s[col*4];
+            ubyte b = s[col*4+1];
+            ubyte c = s[col*4+2];
+            ubyte d = s[col*4+3];
+            s[col*4]   = x_0x0e[a] ^ x_0x0b[b] ^ x_0x0d[c] ^ x_0x09[d];
+            s[col*4+1] = x_0x09[a] ^ x_0x0e[b] ^ x_0x0b[c] ^ x_0x0d[d];
+            s[col*4+2] = x_0x0d[a] ^ x_0x09[b] ^ x_0x0e[c] ^ x_0x0b[d];
+            s[col*4+3] = x_0x0b[a] ^ x_0x0d[b] ^ x_0x09[c] ^ x_0x0e[d];
         }
     }
 
     unittest 
     {
-        State a, b;
-        a.bytes = cast(ubyte[16]) x"6353e08c0960e104cd70b751bacad0e7";
-        b.bytes = cast(ubyte[16]) x"5f72641557f5bc92f7be3b291db9f91a";
+        State a = cast(ubyte[]) x"6353e08c0960e104cd70b751bacad0e7".dup;
+        State b = cast(ubyte[]) x"5f72641557f5bc92f7be3b291db9f91a";
+
         mixColumns(a);
         assert(a == b);
 
-        State c, d;
-        c.bytes = cast(ubyte[16]) x"fde3bad205e5d0d73547964ef1fe37f1";
-        d.bytes = cast(ubyte[16]) x"2d7e86a339d9393ee6570a1101904e16";
+        State c = cast(ubyte[]) x"fde3bad205e5d0d73547964ef1fe37f1".dup;
+        State d = cast(ubyte[]) x"2d7e86a339d9393ee6570a1101904e16";
+
         invMixColumns(c);
         assert(c == d);
     }
@@ -585,7 +561,6 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
 
     unittest
     {
-        // TODO 
     }
 }
 
@@ -654,7 +629,7 @@ void AESspeedBenchmark()
     long encryptTime = tEnd - tStart;
 
     write("Encryption time: "); write(encryptTime / 10000000.0); writeln(" seconds");
-    blockCipher.reportTiming();
+    blockCipher.reportTiming(encryptTime);
     std.stdio.write("Throughput: "); std.stdio.write(megaBytes / (encryptTime / 10000000.0)); writeln(" MB/s");
 }
 
