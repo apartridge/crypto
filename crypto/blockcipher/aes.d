@@ -567,7 +567,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
 
 // -- Debug stuff --
 
-private static void printHex(uint round, string s, ubyte[] b)
+static void printHex(uint round, string s, ubyte[] b)
 {
     write("round["); write(round); write("]."~s~"\t");
     write(byteToHexString(b));
@@ -576,7 +576,15 @@ private static void printHex(uint round, string s, ubyte[] b)
     writeln("");
 }
 
-private static void printHex(uint round, string s, uint[] b)
+static void printHexInt(uint round, string s, uint[] b)
+{
+    write("round["); write(round); write("]."~s~"\t");
+    for (uint i = 0; i < b.length; ++i)
+        write(wordToString(b[i]));
+    writeln("");
+}
+
+static void printHex(uint round, string s, uint[] b)
 {
     write("round["); write(round); write("]."~s~"\t");
     for (uint i = 0; i < b.length; ++i)
