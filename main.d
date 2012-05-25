@@ -2,7 +2,6 @@ module main;
 
 import crypto.hash.sha1;
 import crypto.blockcipher.aes;
-import crypto.blockcipher.taes;
 import crypto.mode.ecb;
 
 import std.stdio, std.algorithm, std.getopt, std.stream, std.cstream, std.mmfile;
@@ -119,7 +118,7 @@ void execute(string[] args)
                 write("Throughput: "); write(mb / sec); writeln(" MB/s");
                 break;
             default:
-                tableAESspeedBenchmark();
+                AESspeedBenchmark();
                 //testAesFile();
                 writeln("Valid parameters for --benchmark: \naes-128-ecb");
                 break;

@@ -294,7 +294,6 @@
    </Folder>
    <Folder name="blockcipher">
     <File path="crypto\blockcipher\aes.d" />
-    <File path="crypto\blockcipher\taes.d" />
    </Folder>
    <Folder name="hash">
     <File path="crypto\hash\merkle_damgaard.d" />
