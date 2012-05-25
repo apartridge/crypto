@@ -27,7 +27,7 @@ void execute(string[] args)
            "benchmark", &benchmark,
            "in", &input,
            "out", &output,
-	   "key", &key
+	       "key", &key
     );
 
     // Initialize input/output streams to stdin/stdout
@@ -104,7 +104,8 @@ void execute(string[] args)
         {
             case "aes-128-ecb":
                 auto k = parseHexString!(16)(key);
-                auto ecb = new ECB(new AES128(k));
+                auto aes = new AES128(k);
+                auto ecb = new ECB(aes);
 
                 long tStart = Clock.currStdTime();
                 ecb.encrypt(inStream, outStream);
@@ -115,8 +116,31 @@ void execute(string[] args)
                 write("Duration: "); writeln(dur!"hnsecs"(tEnd - tStart));
                 write("Throughput: "); write(mb / sec); writeln(" MB/s");
                 break;
+
+            case "speed-aes":
+                auto blockCipher = new AES128(cast(ubyte[16]) x"63cab7040953d051cd60e0e7ba70e18c");
+                auto message = new ubyte[16];
+                auto outputBuffer = new ubyte[16];
+
+                std.stdio.writeln("Running AES speed benchmark");
+
+                int megaBytes = 10;
+                int iterations = megaBytes*1024*1024 / 16;
+
+                long tStart = Clock.currStdTime();
+
+                for (int i = 0; i < iterations; ++i)
+                    blockCipher.encrypt(message);
+
+                long tEnd = Clock.currStdTime();
+                long encryptTime = tEnd - tStart;
+
+                writeln("Encryption time: ", encryptTime/10000000.0, " seconds");
+                writeln("Throughput: ", megaBytes/(encryptTime/10000000.0), " MB/s");
+                break;
             default:
                 writeln("Valid parameters for --benchmark: \naes-128-ecb");
+                break;
         }
     }
 
@@ -147,7 +171,7 @@ if (k % 2 == 0)
 }
 
 
-int main2(string[] argv)
+int main(string[] argv)
 {
 
     try

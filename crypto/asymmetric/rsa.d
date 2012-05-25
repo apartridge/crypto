@@ -566,21 +566,18 @@ class RSA
 
 }
 
-
-
-
-
-
-
 void main()
-{
+
 
     int num = 1;
     uint keysize = 384;
     writeln("Generating ",num ," RSA keys for ", keysize, " bit modulus N.");
     StopWatch st;
     st.start();
+/*}
 
+void main1()
+{*/
     IRandom prng = new InsecurePRNG();
     auto generator = new RSAKeyGenerator(prng, keysize);
     RSAKeyPair keypair;
