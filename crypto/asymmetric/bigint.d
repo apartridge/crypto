@@ -25,16 +25,11 @@
 
 module crypto.asymmetric.bigint;
 
-/*
-    Author: Stian Pedersen
-    Based on std.bigint but modified to have modular exponentiation.
-    Preferably at some time we can remove this and base ourselves entirely on the internal bigint.
-*/
-
 //private import std.internal.math.biguintcore;
 private import crypto.asymmetric.biguintcore;
 
 private import std.format : FormatSpec, FormatException;
+private import std.bitmanip;
 
 /** A struct representing an arbitrary precision integer
 *
@@ -112,7 +107,8 @@ public:
         sign = neg;
     }
 
-    // Added by L&S for random number generator
+    /// Construct a BigInt from a big endian ubyte[]
+
     this(T:ubyte[])(T a)
     {
         sign = false;
@@ -127,21 +123,25 @@ public:
         ubyte[][] hexArrayNumbers = [
             [0x00],
             [0x01],
+            [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01],
             [0x00, 0x12],
             [0x01, 0x02, 0x03],
             [0x01, 0x02, 0x03, 0x04],
             [0x01, 0x02, 0x03, 0x04, 0x05],
-            [0x00, 0xff, 0xee, 0x00, 0x00, 0x00, 0x10, 0x00]
+            [0x00, 0xff, 0xee, 0x00, 0x00, 0x00, 0x10, 0x00],
+            [0x00, 0x11, 0x22, 0x33, 0x44,     0x00, 0xff, 0xee, 0x00, 0x00, 0x00, 0x10, 0x00]
         ];
 
         string[] hexStringNumbers = [
             "0x00",
             "0x01",
+            "0x01",
             "0x012",
             "0x010203",
             "0x01020304",
             "0x0102030405",
-            "0x00ffee0000001000"
+            "0x00ffee0000001000",
+            "0x1122334400ffee0000001000"
         ];
 
         for (int i = 0; i < hexArrayNumbers.length; ++i)
@@ -446,6 +446,41 @@ public:
              ? cast(int)(data.peekUint(0))
              : int.max);
     }
+
+    // Returns the absolute value of this BigInt as an ubyte[] big endian.
+
+    ubyte[] toUbyteArray() pure const
+    {
+        size_t uintlength = uintLength();
+        ubyte[] result = new ubyte[uintlength*uint.sizeof];
+
+        foreach(i; 0..uintlength)
+        {
+            result[4*i..4*(i+1)] = nativeToBigEndian!uint(data.peekUint(uintLength-i-1));
+        }
+
+        while(result[0] == 0 && result.length > 1)
+        {
+            result = result[1..$];
+        }
+
+        return result;
+    }
+
+    unittest
+    {
+        ubyte[][] testVectors = [[0], [1], [1,2,3], [1,2,3,4,5,6,7]];
+        foreach(ubyte[] test; testVectors)
+        {
+            BigInt m = BigInt(test);
+            assert(m.toUbyteArray() == test, "toUbyteArray does not match input ");
+        }
+
+        ubyte[] test = [0,0,0,1];
+        BigInt m = BigInt(test);
+        assert(m.toUbyteArray() == [1], "toUbyteArray does not remove leading zeros.");
+    }
+
     /// Number of significant uints which are used in storing this number.
     /// The absolute value of this BigInt is always < 2^^(32*uintLength)
     @property size_t uintLength() pure const

@@ -1,14 +1,20 @@
 module crypto.asymmetric.rsa;
 
-private import crypto.prng.d;
-private import crypto.prng.insecure;
+/*
+// Implements PKCS #1 V2.1: RSA CRYPTOGRAPHY STANDARD (June 14, 2002)
+// ftp://ftp.rsasecurity.com/pub/pkcs/pkcs-1/pkcs-1v2-1.pdf
+*/
+
+import crypto.prng.d;
+import crypto.prng.insecure;
 import crypto.asymmetric.bigint;
-import std.stdio;
-import std.datetime;
+import crypto.hash.sha1;
+
+import std.stdio, std.traits, std.datetime, std.conv : to;
 
 struct RSAKeyPair
 {
-    public BigInt n;
+    public BigInt N;
     public BigInt d;
     public BigInt e;
     public BigInt p;
@@ -20,6 +26,12 @@ struct RSAKeyPair
 
     private bool _hasPrivateKey = false;
     private bool _hasCRTDetails = false;
+    private uint _lengthBits;
+
+    public @property uint lengthBits()
+    {
+        return _lengthBits;
+    }
 
     public @property bool hasPrivateKey()
     {
@@ -31,9 +43,11 @@ struct RSAKeyPair
         return _hasCRTDetails;
     }
 
-    this(BigInt n, BigInt d, BigInt e, BigInt p, BigInt q)
+    this(uint lengthBits, BigInt N, BigInt d, BigInt e, BigInt p, BigInt q)
     {
-        this.n = n;
+        this._lengthBits = lengthBits;
+
+        this.N = N;
         this.d = d;
         this.e = e;
         this.p = p;
@@ -47,7 +61,7 @@ struct RSAKeyPair
         this.dq = d % (q-1);
         this.qinv = RSAKeyGenerator.modularMultiplicativeInverse(q, p);
 
-        this._hasCRTDetails = true;
+        this._hasCRTDetails = false;
 
         /*writeln(d, " % ", p-1, " is ", dp);
         writeln(d, " % ", q-1, " is ", dq);
@@ -90,13 +104,13 @@ class RSAKeyGenerator
         }
         while(p == q);
 
-        auto n = p*q;
-        auto totient = (p-one)*(q-one);
+        BigInt N = p*q;
+        BigInt totient = (p-one)*(q-one);
 
         BigInt e = 17;
-        auto d = modularMultiplicativeInverse(e, totient);
+        BigInt d = modularMultiplicativeInverse(e, totient);
 
-        RSAKeyPair keypair = RSAKeyPair (n, d, e, p, q);
+        RSAKeyPair keypair = RSAKeyPair (bitLength, N, d, e, p, q);
         return keypair;
 
     }
@@ -115,7 +129,7 @@ class RSAKeyGenerator
 
             if(isProbablePrime(randomCandidate))
             {
-                writeln("Found a probable prime of bitlength ",bitLength/2," \n", randomCandidate, " \n with ", tries, " guesses of a prime.");
+                //writeln("Found a probable prime of bitlength ",bitLength/2," with ", tries, " guesses of a prime.\n", randomCandidate);
                 return randomCandidate;
             }
         }
@@ -126,12 +140,12 @@ class RSAKeyGenerator
 
     private bool isProbablePrime(BigInt randomCandidate)
     {
-        if(randomCandidate % 3 == 0 || randomCandidate % 7 == 0 || randomCandidate % 11 == 0 || randomCandidate % 13 == 0 || randomCandidate % 19 == 0)
+        if(randomCandidate % 3 == 0 || randomCandidate % 5 == 0 || randomCandidate % 7 == 0 || randomCandidate % 11 == 0 || randomCandidate % 13 == 0)
         {
             return false;
         }
 
-        return millerRabinPrimeTest(randomCandidate, 40); // Yields a probability 4^-40 false positives
+        return millerRabinPrimeTest(randomCandidate, 40); // Yields a probability 4^-30 false positives
     }
 
     // Check this random number with the Miller Rabin Test, with a given number of tries
@@ -151,11 +165,9 @@ class RSAKeyGenerator
         for(uint i = 0; i < tries; i++)
         {
             BigInt apick;
-            int repeats = 0;
             do
             {
                 apick = randomBigInt(rcmin1.bitLength);
-                repeats++;
             }
             while(apick >= rcmin1 || apick < 2);
 
@@ -163,10 +175,10 @@ class RSAKeyGenerator
 
             if(x == one || x == rcmin1)
             {
-                break;
+                continue;
             }
 
-            bool doublebreak = false;
+            bool do_continue = false;
 
             for(int ri = 1; ri < s; ri++)
             {
@@ -177,14 +189,14 @@ class RSAKeyGenerator
                 }
                 else if(x == rcmin1)
                 {
-                    doublebreak = true;
+                    do_continue = true;
                     break;
                 }
             }
 
-            if(doublebreak)
+            if(do_continue)
             {
-                break;
+                continue;
             }
 
             return false;
@@ -294,53 +306,204 @@ class RSAKeyGenerator
 
 class RSA
 {
-    private:
-    RSAKeyPair keypair;
+    public enum PaddingMode {OAEP, NO_PADDING};
 
-    public:
+    private RSAKeyPair keypair;
+    private PaddingMode padding;
+    private IRandom random;
 
-    this(RSAKeyPair keypair)
+    public this(RSAKeyPair keypair, IRandom random, PaddingMode padding = PaddingMode.OAEP)
     {
         this.keypair = keypair;
+        this.padding = padding;
+        this.random = random;
     }
 
     /*
     // Encryption
     */
 
-    BigInt encrypt(BigInt m)
+    public ubyte[] encrypt(T)(T text) if (isArray!T) // todo endian problems
     {
-        BigInt result = m.powMod(keypair.e, keypair.n);
+        //version(BigEndian)
+        //{
+            ubyte[] msg = cast(ubyte[]) text;
+        //}
+        /*else
+        {
+            ubyte[] msg = cast(ubyte[]);
+        }*/
 
-        return result;
+        switch(padding)
+        {
+            case PaddingMode.OAEP:
+                return encryptOAEP(msg);
+            case PaddingMode.NO_PADDING:
+                return encryptPlain(msg);
+            default:
+                throw new Exception("Unrecognized padding mode for RSA.encrypt().");
+        }
     }
+
+    private ubyte[] encryptPlain(ubyte[] message)
+    {
+        BigInt m = BigInt(message);
+        BigInt result = m.powMod(keypair.e, keypair.N);
+
+        return result.toUbyteArray();
+    }
+
+    /*
+    // OAEP Encryption Scheme
+    // Implemented following the details in PKCS#1 2.2
+    // The messagePadded array is transformed in the following way using the Mask Generation Function 
+    // 1) [0 Seed Hash PS 1 M ] where PS is enough zeros to fill it up
+    // 2) [0 Seed XOR(dbmask, Hash PS 1 M)] where dbmask = MGF(seed)
+    // 3) [0 XOR(Seed, seedmask) XOR(dbmask, Hash PS 1 M)] where seedmask = MGF(XOR(dbmask, Hash PS 1 M))
+    // This is the padded message.
+    */
+
+    private ubyte[] encryptOAEP(T = SHA1)(ubyte[] message)
+    {
+        ubyte[] padded_message = paddingOAEP(new T, message);
+        return this.encryptPlain(padded_message);
+    }
+
+
+    private ubyte[] paddingOAEP(Hash hashfn, ubyte[] message)
+    {
+        const ubyte[] label = [];
+
+        uint hashLength = hashfn.digestBytes;
+        int maxlengthBytes = (keypair.lengthBits>>3) - 2*hashLength - 2;
+
+        if(maxlengthBytes <= 0)
+        {
+            throw new Exception("The RSA modulus length " ~ to!string(keypair.lengthBits>>3) ~ " bytes is too small to encrypt with OAEP padding."
+                               " Add at least " ~ to!string(-maxlengthBytes + 1)~ " bytes to the modulus in order to encrypt one byte of data.");
+        }
+
+        if(message.length > maxlengthBytes)
+        {
+            throw new Exception("The message is too big. " ~ to!string(message.length) ~ " has to be less than " ~ to!string(maxlengthBytes) ~ ".");
+        }
+
+        ubyte[] messagePadded = new ubyte[keypair.lengthBits>>3];
+        
+        // Create the initial state of the messagePadded
+
+        messagePadded[0] = 0;
+        random.nextBytes(messagePadded[1..hashLength+1]);
+
+        hashfn.put(label);
+        hashfn.digest(messagePadded[hashLength+1..2*hashLength+1]);
+
+        messagePadded[2*hashLength+1 .. $-message.length ] = 0;
+        messagePadded[$-message.length-1] = 1;
+        messagePadded[$-message.length..$] = message[];
+
+        ubyte[] dbMask;
+        OAEP_MGF(hashfn, messagePadded[1..hashLength+1], (keypair.lengthBits>>3) - hashLength - 1, dbMask);
+        ubyteArrayXor(dbMask, messagePadded[hashLength+1..$], messagePadded[hashLength+1..$]);
+        
+        ubyte[] seedMask;
+        OAEP_MGF(hashfn, messagePadded[hashLength+1..$], hashLength, seedMask);
+        ubyteArrayXor(seedMask, messagePadded[1..hashLength+1], messagePadded[1..hashLength+1]);
+        
+        delete dbMask;
+        delete seedMask;
+
+        return messagePadded;
+
+    }
+
+    /*
+    // The Mask Generation Function as defined in the standard as MGF1. Memory for output is allocated on the heap
+    // in this method, and the slice is set to point to this memory.
+    */
+    private void OAEP_MGF(Hash hashfn, const(ubyte[]) input, int output_length, ref ubyte[] output)
+    {
+        uint hashlength = hashfn.digestBytes;
+        uint countTo = output_length / hashlength - (output_length % hashlength == 0 ? 1 : 0);
+
+        ubyte[] t = new ubyte[hashlength*(countTo+1)];
+
+        ubyte[] hashfn_round_input = new ubyte[input.length + 4];
+        hashfn_round_input[0..$-4] = input[];
+
+        for(uint counter = 0; counter <= countTo; counter++)
+        {
+            hashfn_round_input[$-4..$] = std.bitmanip.nativeToBigEndian!uint(counter);
+            hashfn.reset();
+            hashfn.put(hashfn_round_input);
+            hashfn.digest(t[counter*hashlength..(counter+1)*hashlength]);
+        }
+
+        delete hashfn_round_input;
+
+        output = t[0..output_length];
+
+    }
+
+    /*
+    // r[i] = a[i] ^ b[i] for the entire array.
+    */
+
+    private void ubyteArrayXor(ubyte[] a, ubyte[] b, ubyte[] r)
+    {
+        assert(a.length == b.length && b.length == r.length,
+               "The length of the arrays is not equal for ubyteArrayXor.");
+
+        if((a.length & (size_t.sizeof-1)) == 0)
+        {
+            size_t[] ai = cast(size_t[])a;
+            size_t[] bi = cast(size_t[])b;
+            size_t[] ri = cast(size_t[])r;
+            foreach(i; 0..a.length/size_t.sizeof)
+            {
+                ri[i] = ai[i] ^ bi[i];
+            }
+        }
+        else
+        {
+            foreach(i; 0..a.length)
+            {
+                r[i] = a[i] ^ b[i];
+            }
+        }
+    }
+
 
     /*
     // Decryption
     */
-    BigInt decrypt(BigInt c)
-    {
-        // Use the Chinese Remainder Theorem to speed up
 
-        if(keypair.hasCRTDetails)
+    private ubyte[] decrypt(T)(T text) if (isArray!T) // todo endian problems
+    {
+        BigInt temp = BigInt(text);
+
+        if(keypair.hasCRTDetails) // Use the Chinese Remainder Theorem to speed up
         {
-            BigInt m1 = c.powMod(keypair.dp, keypair.p);
-            BigInt m2 = c.powMod(keypair.dq, keypair.q);
+            BigInt m1 = temp.powMod(keypair.dp, keypair.p);
+            BigInt m2 = temp.powMod(keypair.dq, keypair.q);
             BigInt h = (keypair.qinv*(m1-m2)) % keypair.p;
-            if(h < 0)
+            /*if(h < 0)
             {
                 h += keypair.p;
-            }
-            return m2 + h*keypair.q;
+            }*/
+            temp = m2 + h*keypair.q;
         }
         else
         {
-            return c.powMod(keypair.d, keypair.n);
+            temp = temp.powMod(keypair.d, keypair.N);
         }
+
+        return temp.toUbyteArray();
+        
     }
 
     /*
-    // Test RSA encryption and decryption
+    // Test RSA plain encryption and decryption
     */
 
     unittest
@@ -351,12 +514,13 @@ class RSA
         BigInt totient = (p-RSAKeyGenerator.one)*(q-RSAKeyGenerator.one);
         BigInt e = "17";
         BigInt d = RSAKeyGenerator.modularMultiplicativeInverse(e, totient);
-        RSAKeyPair fixed_pair = RSAKeyPair( n, d, e, p, q );
-        RSA rsaobj = new RSA(fixed_pair);
+        RSAKeyPair fixed_pair = RSAKeyPair(12, n, d, e, p, q );
+        RSA rsaobj = new RSA(fixed_pair, null, RSA.PaddingMode.NO_PADDING );
 
-        BigInt input = "65";
-        BigInt encrypted = rsaobj.encrypt(input);
-        BigInt decrypted = rsaobj.decrypt(encrypted);
+        ubyte[] input = cast(ubyte[])x"41"; // 65 decimal
+
+        ubyte[] encrypted = rsaobj.encrypt(input);
+        ubyte[] decrypted = rsaobj.decrypt(encrypted);
 
         scope(failure)
         {
@@ -366,46 +530,82 @@ class RSA
             writeln("Decrypted: ", decrypted);
         }
 
-        assert(encrypted == BigInt("2790"), "Encrypted value is not correct, expecting 2790.");
+        assert(encrypted == BigInt("2790").toUbyteArray(), "Encrypted value is not correct, expecting 2790.");
         assert(decrypted == input, "Decrypting does not give back original input.");
 
     }
 
+    // Tests the OAEP Scheme
+
+    unittest
+    {
+        class AlwaysOnePRNG : PRNG
+        {
+            override void nextBytes(ubyte[] buffer)
+            {
+                buffer[] = 1;
+            }
+        }
+
+        BigInt p = "61";
+        BigInt q = "53";
+        RSAKeyPair fixed_pair = RSAKeyPair(360, p*q, BigInt("2753"), BigInt("17"), p, q );
+        RSA rsaobj = new RSA(fixed_pair, new AlwaysOnePRNG, RSA.PaddingMode.OAEP); 
+        ubyte[] padded_message = rsaobj.paddingOAEP(new SHA1, [2, 4]);
+
+        assert(padded_message == [0, 112, 101, 75, 4, 137, 194, 65, 208, 224, 191, 232,
+        37, 238, 227, 108, 218, 58, 191, 28, 192, 135, 42, 139, 113, 204, 216, 96,
+        249, 249, 134, 42, 26, 34, 179, 56, 197, 32, 188, 94, 253, 82, 28, 11, 192],
+               "The padded OAEP message is not correct.");
+        scope(failure)
+        {
+            writeln("RSA enryption with OAEP padding mode failed.");
+        }
+    }
+
+
 }
+
+
+
+
+
+
 
 void main()
 {
 
-    uint keysize = 2048;
-    writeln("Generating RSA keys for ", keysize, " bit modulus N.");
+    int num = 1;
+    uint keysize = 384;
+    writeln("Generating ",num ," RSA keys for ", keysize, " bit modulus N.");
     StopWatch st;
     st.start();
 
     IRandom prng = new InsecurePRNG();
     auto generator = new RSAKeyGenerator(prng, keysize);
-    RSAKeyPair myfirstpair = generator.newKeyPair();
+    RSAKeyPair keypair;
+    
+    auto f = File ("primes.txt", "w");
+
+    foreach(i; 0..num)
+    {
+        keypair = generator.newKeyPair();
+        f.writeln(keypair.p);
+        f.writeln(keypair.q);
+    }
 
     st.stop();
-    writeln("Rsa Keys with a modulus of bitlength ", myfirstpair.n.bitLength ," generated in ", st.peek().msecs/1000.0f, " seconds");
+    writeln(num, " Rsa Key Pairs generated in ", st.peek().msecs/1000.0f, " seconds, on average ", st.peek().msecs/1000.0f/num," seconds per pair. Stored in primes.txt.");
 
+    RSA rsaobj = new RSA(keypair, prng, RSA.PaddingMode.OAEP);
 
+    ubyte[] input = cast(ubyte[])x"5461";
+    ubyte[] encrypted = rsaobj.encrypt(input);
+    ubyte[] original = rsaobj.decrypt(encrypted);
 
+    writeln("Input: ",input,"\nencrypted gives \n",encrypted,"\nand decrypted yields\n", original);
+    
 
-    RSA rsaobj = new RSA(myfirstpair);
-
-
-
-
-
-
-
-    BigInt input = "5465454568452345687456";
-    //writeln("Input value is ", input);
-    BigInt encrypted = rsaobj.encrypt(input);
-    //writeln("Encrypted value is ", encrypted);
-    BigInt original = rsaobj.decrypt(encrypted);
-    writeln("",input," encrypted and decrypted yields\n", original);
-  
 
     std.process.system("pause");
 

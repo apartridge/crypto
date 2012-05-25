@@ -452,6 +452,7 @@ public:
     // Added by L&S for random number init
     bool fromUbyteArray(ubyte[] d)
     {
+        //std.stdio.writeln("Input is ", d);
         //Strip leading zeros
         int firstNonZero = 0;
         while ((firstNonZero < d.length) && (d[firstNonZero]==0x00))
@@ -463,37 +464,44 @@ public:
             data = ZERO;
             return true;
         }
-        const int numBytes = (d.length - firstNonZero);
-        const int numWholeWords = numBytes / 4;
-        const int numExtraBytes = numBytes % 4;
-        const int numWords = numExtraBytes > 0 ? numWholeWords + 1 : numWholeWords;
+        //std.stdio.writeln("firstnionszero is ", firstNonZero);
+
+        int numBytes = d.length - firstNonZero;
+        int numWholeWords = numBytes / BigDigit.sizeof;
+        int numExtraBytes = numBytes % BigDigit.sizeof;
+        int numWords = numExtraBytes > 0 ? numWholeWords + 1 : numWholeWords;
+
         data = new BigDigit[numWords];
 
-        // From least significant (start of data)
+        // From least significant (start of data, end of input)
         for (int word = 0; word < numWholeWords; ++word)
         {
-            data[word] = d[$-1 - word*4];
-            data[word] |= d[$-1 - word*4 - 1] << 8;
-            data[word] |= d[$-1 - word*4 - 2] << 16;
-            data[word] |= d[$-1 - word*4 - 3] << 24;
+            data[word]  = d[$-1 - word*BigDigit.sizeof];
+            data[word] |= d[$-1 - word*BigDigit.sizeof - 1] << 8;
+            data[word] |= d[$-1 - word*BigDigit.sizeof - 2] << 16;
+            data[word] |= d[$-1 - word*BigDigit.sizeof - 3] << 24;
+
+            static if (BigDigit.sizeof == 8)
+            {
+                data[word] |= d[$-1 - word*8 - 4] << 32;
+                data[word] |= d[$-1 - word*8 - 5] << 40;
+                data[word] |= d[$-1 - word*8 - 6] << 48;
+                data[word] |= d[$-1 - word*8 - 7] << 56;
+            }
         }
 
-        // Most significant extra byte (end of data)
+        // Copy the most significant/first bytes into the last data word
+
         if (numWords > numWholeWords)
         {
-            if (numExtraBytes == 1)
+            data[$-1] = 0;
+
+            foreach(i; 0..numExtraBytes)
             {
-                data[$-1] = d[firstNonZero];
-            }
-            else if (numExtraBytes == 2)
-            {
-                data[$-1] = d[firstNonZero] << 8 | d[firstNonZero+1];
-            }
-            else if (numExtraBytes == 3)
-            {
-                data[$-1] = d[firstNonZero] << 16 | d[firstNonZero+1] << 8 | d[firstNonZero+2];
+                data[$-1] |= d[firstNonZero+i] << 8*(numExtraBytes - i - 1);
             }
         }
+
         return true;
     }
 

@@ -11,18 +11,18 @@ provided randomness or OS random function.
 
 interface IRandom
 {
-    ubyte nextByte();
+    //ubyte nextByte();
     void nextBytes(ubyte[] buffer);
 }
 
 abstract class PRNG : IRandom
 {
-    ubyte nextByte()
+    /*ubyte nextByte()
     {
         ubyte[1] a;
         nextBytes(a);
         return a[0];
     }
-
+    */
     abstract void nextBytes(ubyte[] buffer);
 }
