@@ -1,7 +1,5 @@
 module crypto.blockcipher.aes;
 
-import std.stdio, std.bitmanip;
-import std.datetime;
 
 public interface BlockCipher
 {
@@ -9,7 +7,6 @@ public interface BlockCipher
     public void decrypt(ubyte[] cipher);
 
     @property public const uint blockSize();
-    public void reportTiming(long);
 }
 
 /* 
@@ -440,7 +437,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         ubyte res = 0x0;
         if ((a & 0x01) != 0) res = b;
         foreach (uint c; [0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80]) {
-            tmp = xtime(tmp); // b * { 02, 04, 08, 10, 20, 40, 80 }
+            tmp = xtime(tmp);
             if ((a & c) != 0) {
                 res ^= tmp;
             }
@@ -513,59 +510,83 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
     }
 }
 
-
-// -- Debug stuff --
-
-static void printHex(uint round, string s, ubyte[] b)
+version(unittest)
 {
-    write("round["); write(round); write("]."~s~"\t");
-    write(byteToHexString(b));
-    //for (uint i = 0; i < b.length; ++i)
-    //    write(wordToString(b[i]));
-    writeln("");
-}
+    import std.stdio, std.datetime;
 
-static void printHexInt(uint round, string s, uint[] b)
-{
-    write("round["); write(round); write("]."~s~"\t");
-    for (uint i = 0; i < b.length; ++i)
-        write(wordToString(b[i]));
-    writeln("");
-}
-
-static void printHex(uint round, string s, uint[] b)
-{
-    write("round["); write(round); write("]."~s~"\t");
-    for (uint i = 0; i < b.length; ++i)
-        write(wordToString(b[i]));
-    writeln("");
-}
-
-static string wordToString(uint word) {
-    ubyte[4] ss = [cast(ubyte)(word >> 24), cast(ubyte)(word >> 16), cast(ubyte)(word >> 8), cast(ubyte)word];
-    return byteToHexString(ss);
-}
-
-auto byteToHexString(ubyte[] s) // 0..256
-{
-    auto byteToHex = function (ubyte a) {
-        ubyte upper = (a & 0b11110000) >> 4;
-        ubyte lower = a & 0b00001111;
-        auto lookup = ["0","1","2","3","4","5","6","7","8","9","a","b","c","d","e","f"];
-
-        return lookup[upper]~lookup[lower];
-    };
-    string res = ""; int i = 0;
-    foreach (b; s) {
-        res ~= byteToHex(b); i++;
-        if (i % 4 == 0) res ~= " ";
+    static void printHex(uint round, string s, ubyte[] b)
+    {
+        write("round["); write(round); write("]."~s~"\t");
+        write(byteToHexString(b));
+        writeln("");
     }
 
-    return res;
+    static void printHexInt(uint round, string s, uint[] b)
+    {
+        write("round["); write(round); write("]."~s~"\t");
+        for (uint i = 0; i < b.length; ++i)
+            write(wordToString(b[i]));
+        writeln("");
+    }
+
+    static void printHex(uint round, string s, uint[] b)
+    {
+        write("round["); write(round); write("]."~s~"\t");
+        for (uint i = 0; i < b.length; ++i)
+            write(wordToString(b[i]));
+        writeln("");
+    }
+
+    static string wordToString(uint word) {
+        ubyte[4] ss = [cast(ubyte)(word >> 24), cast(ubyte)(word >> 16), cast(ubyte)(word >> 8), cast(ubyte)word];
+        return byteToHexString(ss);
+    }
+
+    auto byteToHexString(ubyte[] s) // 0..256
+    {
+        auto byteToHex = function (ubyte a) {
+            ubyte upper = (a & 0b11110000) >> 4;
+            ubyte lower = a & 0b00001111;
+            auto lookup = ["0","1","2","3","4","5","6","7","8","9","a","b","c","d","e","f"];
+
+            return lookup[upper]~lookup[lower];
+        };
+        string res = ""; int i = 0;
+        foreach (b; s) {
+            res ~= byteToHex(b); i++;
+            if (i % 4 == 0) res ~= " ";
+        }
+
+        return res;
+    }
+
+    // Validate output against openssl to check byte ordering is not messed up
+    void testAesFile()
+    {
+        auto blockCipher = new AES128(cast(ubyte[16]) x"000102030405060708090a0b0c0d0e0f");
+        import std.file, std.stdio, std.array, std.stream;
+
+        auto inputFileStream = new BufferedFile("../../scripts/plain.dat");
+        auto outputFileStream = new BufferedFile("../../scripts/cipher.dat", FileMode.Out);
+
+        ubyte[] buffer = new ubyte[16];
+        if (inputFileStream.read(buffer) == 16)
+        {
+            std.stdio.writeln("Bytes read"~byteToHexString(buffer));
+            blockCipher.encrypt(buffer);
+            outputFileStream.write(buffer);
+            std.stdio.writeln(byteToHexString(buffer));
+        }
+        else
+            std.stdio.writeln("Not read");
+        outputFileStream.close();
+    }
 }
 
 void AESspeedBenchmark()
 {
+    import std.stdio, std.datetime;
+
     auto blockCipher = new AES128(cast(ubyte[16]) x"63cab7040953d051cd60e0e7ba70e18c");
     auto message = new ubyte[16];
     auto outputBuffer = new ubyte[16];
@@ -589,27 +610,3 @@ void AESspeedBenchmark()
     blockCipher.reportTiming(encryptTime);
     std.stdio.write("Throughput: "); std.stdio.write(megaBytes / (encryptTime / 10000000.0)); writeln(" MB/s");
 }
-
-// Validate output against openssl to check byte ordering is not messed up
-void testAesFile()
-{
-    auto blockCipher = new AES128(cast(ubyte[16]) x"000102030405060708090a0b0c0d0e0f");
-    import std.file, std.stdio, std.array, std.stream;
-
-    auto inputFileStream = new BufferedFile("../../scripts/plain.dat");
-    auto outputFileStream = new BufferedFile("../../scripts/cipher.dat", FileMode.Out);
-
-    ubyte[] buffer = new ubyte[16];
-    if (inputFileStream.read(buffer) == 16)
-    {
-        std.stdio.writeln("Bytes read"~byteToHexString(buffer));
-        blockCipher.encrypt(buffer);
-        outputFileStream.write(buffer);
-        std.stdio.writeln(byteToHexString(buffer));
-    }
-    else
-        std.stdio.writeln("Not read");
-    outputFileStream.close();
-}
-
-// -- End debug stuff --
