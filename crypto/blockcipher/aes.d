@@ -1,13 +1,5 @@
 module crypto.blockcipher.aes;
-
-
-public interface BlockCipher
-{
-    public void encrypt(ubyte[] message);
-    public void decrypt(ubyte[] cipher);
-
-    @property public const uint blockSize();
-}
+import crypto.blockcipher.blockcipher;
 
 /* 
  * AES standard: http://csrc.nist.gov/publications/fips/fips197/fips-197.pdf

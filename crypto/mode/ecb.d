@@ -1,6 +1,7 @@
 module crypto.mode.ecb;
 
 import crypto.blockcipher.aes;
+import crypto.blockcipher.blockcipher;
 import std.file, std.stdio, std.array, std.stream;
 import std.datetime;
 
