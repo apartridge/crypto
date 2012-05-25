@@ -1,6 +1,10 @@
 module crypto.blockcipher.aes;
 import crypto.blockcipher.blockcipher;
 
+// TODO: Make ranges instead of array?
+// TODO: Create StreamCipher
+// TODO: Manual loop-unroll
+
 /* 
  * AES standard: http://csrc.nist.gov/publications/fips/fips197/fips-197.pdf
  * Intel document: http://software.intel.com/file/20457
@@ -459,7 +463,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
             invMixColumns(dw[i*Nb .. (i+1)*Nb]);
     }
 
-    @property public const uint blockSize()
+    @property public const size_t blockSize()
     {
         return Nb*4;
     }

@@ -54,6 +54,12 @@ void execute(string[] args)
                 auto ecb = new ECB(new AES128(k));
                 ecb.encrypt(inStream, outStream);
                 break;
+            case "aes-128-cbc":
+                auto k = parseHexString!(16)(key);
+                auto iv = cast(ubyte[16]) x"00000000000000000000000000000000";
+                SymmetricScheme cbc = new CBC(new AES128(k), iv);
+                cbc.encrypt(inStream, outStream);
+                break;
             default:
                 writeln("Valid parameters for --enc: \naes-128-ecb");
         }
