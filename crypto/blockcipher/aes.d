@@ -324,15 +324,10 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
             //printHexInt(round+1, "start", state);
         }
 
-        // SubBytes and ShiftRows
-        // Eliminate sbox by masking T-table
+        // SubBytes and ShiftRows, eliminate sbox by masking T-table
         tmp[] = state[0 .. Nb];
         for (uint col = 0; col < Nb; ++col)
         {
-            /*uint a = sbox[tmp[col] & 0xff];
-            uint b = sbox[(tmp[(col+1) % Nb] >> 8) & 0xff] << 8;
-            uint c = sbox[(tmp[(col+2) % Nb] >> 16) & 0xff] << 16;
-            uint d = sbox[(tmp[(col+3) % Nb] >> 24) & 0xff] << 24;*/
             uint a = t4[tmp[col] & 0xff] & 0x000000ff;
             uint b = t4[(tmp[(col+1) % Nb] >> 8) & 0xff] & 0x0000ff00;
             uint c = t2[(tmp[(col+2) % Nb] >> 16) & 0xff] & 0x00ff0000;
