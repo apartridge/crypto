@@ -411,37 +411,25 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         return (w >> 8) | (w << 24);
     }
 
-    private static ubyte xtimes(ubyte a, ubyte b)
-    {
-        auto xtime(ubyte b) {
-            ubyte a = cast(ubyte)(b << 1);
-            if ((b & 0b10000000) == 0b10000000) return cast(ubyte)(a ^ 0x1b);
-            return a;
-        }
-        ubyte tmp = b;
-        ubyte res = 0x0;
-        if ((a & 0x01) != 0) res = b;
-        foreach (uint c; [0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80]) {
-            tmp = xtime(tmp);
-            if ((a & c) != 0) {
-                res ^= tmp;
-            }
-        }
-        return res;
-    }
-
+    // Need to compute xtimes(a, b). Use table lookup in inverse table, and 
+    // inv_sbox(s_box(x)) = x to avoid implementing finite field multiplication in GF(256)
     private static void invMixColumns(uint[] s)
     {
+        auto s_box(ubyte a)
+        {
+            return t4[a] & 0xff;
+        }
+
         for (uint col = 0; col < 4; ++col)
         {
             ubyte a = s[col] & 0xff;
             ubyte b = (s[col] >> 8) & 0xff;
             ubyte c = (s[col] >> 16) & 0xff;
             ubyte d = (s[col] >> 24) & 0xff;
-            s[col] = xtimes(0x0e, a) ^ xtimes(0x0b, b) ^ xtimes(0x0d, c) ^ xtimes(0x09, d);
-            s[col] |= (xtimes(0x09, a) ^ xtimes(0x0e, b) ^ xtimes(0x0b, c) ^ xtimes(0x0d, d)) << 8;
-            s[col] |= (xtimes(0x0d, a) ^ xtimes(0x09, b) ^ xtimes(0x0e, c) ^ xtimes(0x0b, d)) << 16;
-            s[col] |= (xtimes(0x0b, a) ^ xtimes(0x0d, b) ^ xtimes(0x09, c) ^ xtimes(0x0e, d)) << 24;
+            s[col]  =   (it[s_box(a)] & 0xff)        ^ ((it[s_box(b)] >> 24) & 0xff) ^ ((it[s_box(c)] >> 16) & 0xff) ^ ((it[s_box(d)] >> 8) & 0xff);
+            s[col] |= (((it[s_box(a)] >> 8) & 0xff)  ^ (it[s_box(b)] & 0xff)         ^ ((it[s_box(c)] >> 24) & 0xff) ^ ((it[s_box(d)] >> 16) & 0xff)) << 8;
+            s[col] |= (((it[s_box(a)] >> 16) & 0xff) ^ ((it[s_box(b)] >> 8) & 0xff)  ^ (it[s_box(c)] & 0xff)         ^ ((it[s_box(d)] >> 24) & 0xff)) << 16;
+            s[col] |= (((it[s_box(a)] >> 24) & 0xff) ^ ((it[s_box(b)] >> 16) & 0xff) ^ ((it[s_box(c)] >> 8) & 0xff)  ^ (it[s_box(d)] & 0xff))         << 24;
         }
     }
 
@@ -522,7 +510,7 @@ version(unittest)
         return byteToHexString(ss);
     }
 
-    auto byteToHexString(ubyte[] s) // 0..256
+    auto byteToHexString(ubyte[] s)
     {
         auto byteToHex = function (ubyte a) {
             ubyte upper = (a & 0b11110000) >> 4;
