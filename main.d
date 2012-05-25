@@ -120,6 +120,7 @@ void execute(string[] args)
                 break;
             default:
                 tableAESspeedBenchmark();
+                //testAesFile();
                 writeln("Valid parameters for --benchmark: \naes-128-ecb");
                 break;
         }
