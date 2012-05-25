@@ -449,7 +449,29 @@ public:
 
     // Returns the absolute value of this BigInt as an ubyte[] big endian.
 
-    ubyte[] toUbyteArray() pure const
+    ubyte[] toUbyteArrayDim(size_t bytelength) const
+    {
+        size_t uintlength = uintLength();
+        size_t arrayDim = bytelength > uintlength*uint.sizeof ? bytelength : uintlength*uint.sizeof;
+        ubyte[] result = new ubyte[arrayDim];
+
+        size_t start_from = arrayDim - uintlength*uint.sizeof;
+
+        foreach(i; 0..uintlength)
+        {
+            result[start_from+4*i..start_from+4*(i+1)] = nativeToBigEndian!uint(data.peekUint(uintLength-i-1));
+        }
+
+        while(result[0] == 0 && result.length > 1 && bytelength != result.length)
+        {
+            result = result[1..$];
+        }
+        
+        return result;
+    }
+
+
+    ubyte[] toUbyteArray() const
     {
         size_t uintlength = uintLength();
         ubyte[] result = new ubyte[uintlength*uint.sizeof];
@@ -467,7 +489,7 @@ public:
         return result;
     }
 
-    unittest
+    /*unittest
     {
         ubyte[][] testVectors = [[0], [1], [1,2,3], [1,2,3,4,5,6,7]];
         foreach(ubyte[] test; testVectors)
@@ -479,7 +501,7 @@ public:
         ubyte[] test = [0,0,0,1];
         BigInt m = BigInt(test);
         assert(m.toUbyteArray() == [1], "toUbyteArray does not remove leading zeros.");
-    }
+    }*/
 
     /// Number of significant uints which are used in storing this number.
     /// The absolute value of this BigInt is always < 2^^(32*uintLength)
