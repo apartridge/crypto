@@ -302,7 +302,9 @@
     <File path="crypto\hash\sha2.d" />
    </Folder>
    <Folder name="mode">
+    <File path="crypto\mode\cbc.d" />
     <File path="crypto\mode\ecb.d" />
+    <File path="crypto\mode\scheme.d" />
    </Folder>
    <Folder name="prng">
     <File path="crypto\prng\insecure.d" />

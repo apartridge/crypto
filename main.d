@@ -3,6 +3,8 @@ module main;
 import crypto.hash.sha1;
 import crypto.blockcipher.aes;
 import crypto.mode.ecb;
+import crypto.mode.cbc;
+import crypto.mode.scheme;
 
 import std.stdio, std.algorithm, std.getopt, std.stream, std.cstream, std.mmfile;
 import std.datetime;
@@ -31,7 +33,7 @@ void execute(string[] args)
     );
 
     // Initialize input/output streams to stdin/stdout
-    InputStream inStream = din;
+    Stream inStream = din;
     OutputStream outStream = dout;
     ulong inputFileLength = 0;
     if (input != null)
@@ -54,12 +56,20 @@ void execute(string[] args)
                 auto ecb = new ECB(new AES128(k));
                 ecb.encrypt(inStream, outStream);
                 break;
+
             case "aes-128-cbc":
                 auto k = parseHexString!(16)(key);
                 auto iv = cast(ubyte[16]) x"00000000000000000000000000000000";
-                SymmetricScheme cbc = new CBC(new AES128(k), iv);
-                cbc.encrypt(inStream, outStream);
+/*
+                auto scheme  = new CBC(new AES128(k), iv, SymmetricScheme.Padding.None);
+                auto cStream = new CipherStream(inStream, scheme);
+                
+                auto buf = new ubyte[16];
+                while (cStream.read(buf) > 0)
+                    outStream.write(cast(ubyte[])byteToHexString(buf));
+                */
                 break;
+
             default:
                 writeln("Valid parameters for --enc: \naes-128-ecb");
         }
