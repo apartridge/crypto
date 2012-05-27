@@ -4,16 +4,20 @@ private import std.bitmanip;
 private import std.stdio;
 private import std.algorithm : min;
 
-class MerkleDamgaard ( uint outputBytes, InternalStateType, uint internalStateBytes, uint blockBytes, uint messageLengthAppendixBytes ) : Hash
+/*
+// A Abstract Merke Damgaard Base Class
+// IST is the internal data type of the hash function, uint or ulong (for SHA2).
+*/
+
+class MerkleDamgaard ( uint outputBytes, IST, uint internalStateBytes, uint blockBytes, uint messageLengthAppendixBytes ) : Hash
 {
-    protected abstract void compress(const(ubyte)[] block, ref InternalStateType[internalStateBytes/InternalStateType.sizeof] ho);
-    //protected abstract ubyte[outputBytes] finalize(ref InternalStateType[internalStateBytes/InternalStateType.sizeof] hi);
+    protected abstract void compress(const(ubyte)[] block, ref IST[internalStateBytes/IST.sizeof] ho);
     protected abstract void setInitialVector();
 
     private ulong messageLengthBytes = 0; 
     private ubyte[blockBytes] buffer = void;
     private int bufferUsedBytes = 0;
-    protected InternalStateType[internalStateBytes/InternalStateType.sizeof] h;
+    protected IST[internalStateBytes/IST.sizeof] h;
 
     this()
     {
@@ -22,6 +26,13 @@ class MerkleDamgaard ( uint outputBytes, InternalStateType, uint internalStateBy
 
     public override @property uint digestBytes(){
         return outputBytes;
+    }
+
+    public override void reset()
+    {
+        setInitialVector();
+        messageLengthBytes = 0;
+        bufferUsedBytes = 0;
     }
 
     protected override void putData(const(ubyte)[] data)
@@ -60,14 +71,13 @@ class MerkleDamgaard ( uint outputBytes, InternalStateType, uint internalStateBy
         
     }
 
-    public override ubyte[] digest()
+    protected override ubyte[] digestBuffer(ubyte[] outputbuffer)
     {
-
-        assert(bufferUsedBytes >= 0 && bufferUsedBytes < blockBytes);
+        assert(bufferUsedBytes >= 0 && bufferUsedBytes < blockBytes && outputbuffer.length >= outputBytes);
 
         int zeros = blockBytes - messageLengthAppendixBytes - 1 - bufferUsedBytes;
 
-        InternalStateType[internalStateBytes/InternalStateType.sizeof] h2 = h;
+        IST[internalStateBytes/IST.sizeof] h2 = h;
 
         if(zeros < 0)
         {
@@ -99,25 +109,25 @@ class MerkleDamgaard ( uint outputBytes, InternalStateType, uint internalStateBy
             compress(buffer, h2);
         }
         
-        return finalize(h2).dup;
+        finalize(h2, outputbuffer[0..outputBytes]);
+        return outputbuffer[0..outputBytes];
     }
 
-    protected ubyte[outputBytes] finalize(ref InternalStateType[internalStateBytes/InternalStateType.sizeof] h)
-    {
-        InternalStateType[outputBytes/InternalStateType.sizeof] o = h[0..outputBytes/InternalStateType.sizeof];
+    protected void finalize(ref IST[internalStateBytes/IST.sizeof] h,
+                            ubyte[] buffer)
+    {  
+        buffer[] = cast(ubyte[])h[0..outputBytes/IST.sizeof];
+        IST[] bufferInternalStateView = cast(IST[])buffer;
 
         version(LittleEndian)
         {
-
-            foreach(i; 0..outputBytes/InternalStateType.sizeof)
+            foreach(i; 0..outputBytes/IST.sizeof)
             {
-                o[i] = swapEndian(h[i]);
+                bufferInternalStateView[i] = swapEndian(h[i]);
             }
         }
 
-        return cast(ubyte[outputBytes]) o;
     }
-
 
     protected ubyte[messageLengthAppendixBytes] messageLengthAppendix(ulong messageLengthBytes)
     {
@@ -141,9 +151,9 @@ class MerkleDamgaard ( uint outputBytes, InternalStateType, uint internalStateBy
 
     ~this()
     {
-        // scratch buffer
         buffer[] = 0;
         messageLengthBytes = 0;
+        bufferUsedBytes = 0;
     }
 
 }

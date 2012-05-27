@@ -100,7 +100,7 @@ unittest
 
 }
 
-// Test of putData semantics and 64B edge cases
+// Test of putData semantics and 64B edge cases as well as reset
 unittest
 {
     auto sha1 = new SHA1;
@@ -138,4 +138,9 @@ unittest
     sha1.put("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
 
     assert(sha1.digest() == x"02020a0b89972627bbbf3b9b6b139ce950d219b2");
+
+    // Reset semantics
+    sha1.reset();
+    assert(sha1.digest() == x"da39a3ee5e6b4b0d3255bfef95601890afd80709", "Hashfunction did not reset.");
+
 }

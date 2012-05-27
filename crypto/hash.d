@@ -1,17 +1,30 @@
 module crypto.hash.d;
 import std.traits;
 
+
+
 abstract class Hash
 {
     public abstract @property uint digestBytes();
 
-    public abstract ubyte[] digest();
-    
     protected abstract void putData(const(ubyte)[]);
 
     public final void put(T)(in T data)
     {
         putData(cast(const(ubyte)[]) data);
+    }
+
+    public abstract void reset();
+
+    protected abstract ubyte[] digestBuffer(ubyte[] outputbuffer);
+
+    public ubyte[] digest(ubyte[] buffer = null)
+    {
+        if(buffer == null)
+            buffer = new ubyte[digestBytes()];
+
+        buffer = digestBuffer(buffer);
+        return buffer;
     }
 
     public final string digestHex()
