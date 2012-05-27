@@ -60,14 +60,8 @@ void execute(string[] args)
             case "aes-128-cbc":
                 auto k = parseHexString!(16)(key);
                 auto iv = cast(ubyte[16]) x"00000000000000000000000000000000";
-/*
-                auto scheme  = new CBC(new AES128(k), iv, SymmetricScheme.Padding.None);
-                auto cStream = new CipherStream(inStream, scheme);
-                
-                auto buf = new ubyte[16];
-                while (cStream.read(buf) > 0)
-                    outStream.write(cast(ubyte[])byteToHexString(buf));
-                */
+                auto cbc = new CBC(new AES128(k), iv, SymmetricScheme.Padding.PKCS5);
+                cbc.encrypt(inStream, outStream);
                 break;
 
             default:
