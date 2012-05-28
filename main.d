@@ -181,7 +181,7 @@ if (k % 2 == 0)
 }
 
 
-int main2(string[] argv)
+int main(string[] argv)
 {
 
     try
