@@ -1,3 +1,7 @@
 Debug/*
 Release/*
 DebugWithProfiler/*
+report.pdf
+*.lyx~
+*.lyx#
+.suo

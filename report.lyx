@@ -1,0 +1,1049 @@
+#LyX 1.6.8 created this file. For more info see http://www.lyx.org/
+\lyxformat 345
+\begin_document
+\begin_header
+\textclass article
+\use_default_options true
+\language english
+\inputencoding auto
+\font_roman lmodern
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize letterpaper
+\use_geometry true
+\use_amsmath 1
+\use_esint 1
+\cite_engine basic
+\use_bibtopic false
+\paperorientation portrait
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\defskip medskip
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\author "" 
+\author "" 
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Crypto in D
+\end_layout
+
+\begin_layout Author
+Lars Kirkholt Melhus and Stian Pedersen
+\end_layout
+
+\begin_layout Abstract
+In this paper we describe our experiences with implementing some common
+ cryptographic primitives in the D programming language.
+ The result can be found at http://github.com/apartridge/crypto.
+\end_layout
+
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Standard
+Many of the more popular programming languages supports cryptographic algorithms
+ like symmetric ancryption, hashing and public key cryptography as part
+ of a standard library or with third party libraries.
+ It has been suggested to add native crypto implementation in the D standard
+ library (Phobos), but so far this has not been done.
+ In particular, there seems to be no standard implementation of asymmetric
+ encryption olike RSA in D.
+ There is however, third party libraries for basic cryptography, but they
+ are either incomplete or not under active development.
+ 
+\end_layout
+
+\begin_layout Standard
+Our goal has been to implement fast cryptographic primitives in pure D,
+ including new algorithms like RSA.
+ 
+\end_layout
+
+\begin_layout Subsection
+The D programming language
+\end_layout
+
+\begin_layout Standard
+Syntactically D derives much from C and C++, and should be very easy to
+ read and understand for people used to C-style languages.
+ Below is a fragment of code written in D, borrowed from the official homepage
+ of the language 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Dlang"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float algorithm
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset listings
+lstparams "basicstyle={\ttfamily}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+#!/usr/bin/rdmd
+\end_layout
+
+\begin_layout Plain Layout
+
+// Computes average line length for standard input.
+\end_layout
+
+\begin_layout Plain Layout
+
+import std.stdio;
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+void main() {
+\end_layout
+
+\begin_layout Plain Layout
+
+    ulong lines = 0;
+\end_layout
+
+\begin_layout Plain Layout
+
+    double sumLength = 0;
+\end_layout
+
+\begin_layout Plain Layout
+
+    foreach (line; stdin.byLine()) {
+\end_layout
+
+\begin_layout Plain Layout
+
+        ++lines;
+\end_layout
+
+\begin_layout Plain Layout
+
+        sumLength += line.length;
+\end_layout
+
+\begin_layout Plain Layout
+
+    }
+\end_layout
+
+\begin_layout Plain Layout
+
+    writeln("Average line length: ",
+\end_layout
+
+\begin_layout Plain Layout
+
+        lines ? sumLength / lines : 0);
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Example code in D
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+So why yet another language you might ask? The creators of D argue that
+ the language fills a need for a powerful modern systems programming language.
+ It combined features such as managed (garbage collected) code like C# and
+ Java, yet it compiles to efficient native machine code like C or C++.
+ Native code is especially important in cryptography, as the algorithms
+ needs to be as fast as possible.
+ At the same time, the elevated level of abstraction and high-level features
+ compared to C maked D an interesting target for implementation.
+ 
+\end_layout
+
+\begin_layout Quote
+D is a language with C-like syntax and static typing.
+ It pragmatically combines efficiency, control, and modeling power, with
+ safety and programmer productivity.
+\end_layout
+
+\begin_layout Quote
+dlang.org
+\end_layout
+
+\begin_layout Standard
+For more information about D, we refer to the official homepage
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Dlang"
+
+\end_inset
+
+.
+ Below we will highlight some of the interesting features of the language,
+ and describe how they impacted our implementation.
+ 
+\end_layout
+
+\begin_layout Paragraph*
+Array slicing
+\end_layout
+
+\begin_layout Standard
+In D, an array can either be statically allocated (with size known at compile-ti
+me), or dynamically (on the heap at run-time).
+ A reference to an array will carry some metadata (a 
+\begin_inset Quotes eld
+\end_inset
+
+fat pointer
+\begin_inset Quotes erd
+\end_inset
+
+), such as array length.
+ One can obtain a new reference (in constant time) to a subset of an array
+ by slicing.
+ For instance, given heap-allocated array A, the expression 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily}"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+A[5 ..
+ $]
+\end_layout
+
+\end_inset
+
+ returns a reference to elements of A beginning at element 5.
+ The special token $ is an alias of the array length.
+ 
+\end_layout
+
+\begin_layout Standard
+Initially the memory model of D can be a bit elusive, as the level of abstractio
+n is a tiny bit above what you might be used to in C or C++ and you still
+ want .
+ But when the different copy and assign semantics become clear, the elegant
+ array syntax of the language helps a great deal in producing elegant, as
+ well as efficient code.
+ 
+\begin_inset Float algorithm
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset listings
+lstparams "basicstyle={\ttfamily}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+invMixColumns( dw[i*Nb ..
+ (i+1)*Nb] );
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Example of calling a function (from the AES module) with a slice of array
+ dw, starting at index i*Nb and ending at index (i+1)*Nb.
+ No copying is performed, only a fat pointer is passed to the function invMixCol
+umns.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph*
+Unit tests
+\end_layout
+
+\begin_layout Standard
+Test-driven development is as popular as ever, but few languages has actually
+ been design with this paradighm in mind from the very beginning.
+ D supports the unittest keyword, which declares a block statement that
+ is supposed to run (and hopefully pass without assertion errors) every
+ time the program is compiled and run.
+ 
+\end_layout
+
+\begin_layout Standard
+In release modes, the compiler ignores all unittest code, so there is no
+ overhead in including them.
+ As a separate point, integrated unittests are supposed to help with documenting
+ the code.
+ They can be seen used extensively in the D standard library 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Phobos"
+
+\end_inset
+
+, as well as in our framework.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float algorithm
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset listings
+lstparams "basicstyle={\ttfamily}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+unittest
+\end_layout
+
+\begin_layout Plain Layout
+
+{
+\end_layout
+
+\begin_layout Plain Layout
+
+    assert(subWord(0x73744765) == 0x8f92a04d);
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Example of a unit test in the AES module.
+ As a separate statement below the function body we include a little snippet
+ of code to verify everything works as expected.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph*
+Integrated assembly code
+\end_layout
+
+\begin_layout Standard
+D has a very cool feature for integrating assembly code directly in the
+ language.
+ In C and C++, different compilers have different solutions to mixing assembly
+ together with the program code.
+ To make this seamless, D has its own assembler, and assembly code can be
+ used by the asm keyword.
+ This is especially useful for implementing highly optimized algorithms,
+ or whenevery you want to use special SSE instructions.
+ 
+\end_layout
+
+\begin_layout Standard
+A drawback with using it's own assembler, D does not support every instruction
+ on every CPU.
+ Recently Intel released their AES-NI 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Intel"
+
+\end_inset
+
+ instruction set extension for hardware accelerated AES.
+ Unfortunately, D's assembler does not (yet) support these instructions,
+ so we were unable to utilize this in our implementation.
+ However, we expect these instructions to be supported eventually, which
+ would greatly increase the speed of AES implementations in D.
+ 
+\end_layout
+
+\begin_layout Subsection
+Cryptography
+\end_layout
+
+\begin_layout Standard
+We have looked at three basic cryptographic primitives; block ciphers, hash
+ functions and pyblic key cryptography (RSA).
+ These are all low-level primitives, which we can use to build high-level
+ protocols.
+ We provide a brief description of each of them.
+ 
+\end_layout
+
+\begin_layout Paragraph*
+Hash functions
+\end_layout
+
+\begin_layout Standard
+A hash function is a one-way function 
+\begin_inset Formula $f:X\rightarrow M$
+\end_inset
+
+ that maps elements in some domain 
+\begin_inset Formula $X$
+\end_inset
+
+ to a (usually smaller) range 
+\begin_inset Formula $M$
+\end_inset
+
+.
+ An example is the hash functions MD5, which maps bits of arbitrary length
+ to bitstrings of length 
+\begin_inset Formula $128$
+\end_inset
+
+; 
+\begin_inset Formula $f_{md5}:\left\{ 0,1\right\} ^{*}\rightarrow\left\{ 0,1\right\} ^{128}$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Paragraph*
+Block ciphers
+\end_layout
+
+\begin_layout Paragraph*
+RSA
+\end_layout
+
+\begin_layout Section
+Implementing AES
+\end_layout
+
+\begin_layout Standard
+Advanced Encryption Standard (AES) is a widely used block cipher, also known
+ as Rijndael after its developers Joan Daemen and Vincent Rijmen.
+ It was selected as the successor to Data Encryption Standard (DES), and
+ standardized by the National Insitute of Standards and Technology with
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "FIPS197"
+
+\end_inset
+
+ in 2001.
+ AES supports message lengths of 128 bits, and key sizes of 128, 192 or
+ 256 bits.
+ We will refer to them as AES-128, AES-192 and AES-256.
+ 
+\end_layout
+
+\begin_layout Standard
+Because of its popularity, AES is naturally one of the most important implementa
+tions in any cryptographic library.
+ Unfortunately, implementing it like it is presented in the standard is
+ way too slow for real world applications.
+ A naive implementation in D gave a throughput of about 1MB/s on an Intel
+ Core 2 Duo running at 2.4GHz.
+ As a reference, benchmarking AES in openssl running 
+\begin_inset Quotes eld
+\end_inset
+
+openssl speed aes-128-cbc
+\begin_inset Quotes erd
+\end_inset
+
+ yields a throughput of about 80MB/s.
+ (NB: On hardware withouth AES-NI support).
+\end_layout
+
+\begin_layout Standard
+To see how we can do better, let's look at what happens to a given column
+ 
+\begin_inset Formula $c$
+\end_inset
+
+ of the state during a round of encryption.
+ 
+\end_layout
+
+\begin_layout Subsection
+Description of the cipher (encryption)
+\end_layout
+
+\begin_layout Standard
+The standard decribes the algorithm's internal operation as a series of
+ mutations on a two-dimensional array of bytes called the 
+\emph on
+state
+\emph default
+.
+ Each byte is numbered 
+\begin_inset Formula $s_{0,0}$
+\end_inset
+
+, 
+\begin_inset Formula $s_{1,0}$
+\end_inset
+
+, ..
+ 
+\begin_inset Formula $s_{3,3}$
+\end_inset
+
+.
+ 
+\begin_inset Formula \[
+\left[\begin{array}{cccc}
+s_{0,0} & s_{0,1} & s_{0,2} & s_{0,3}\\
+s_{1,0} & s_{1,1} & s_{1,2} & s_{1,3}\\
+s_{2,0} & s_{2,1} & s_{2,2} & s_{2,3}\\
+s_{3,0} & s_{3,1} & s_{3,2} & s_{3,3}\end{array}\right]\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+On 32-bit processors, the state can be though of as an array of four 32-bit
+ words, where each word represents a column of the state.
+ The first word address points to 
+\begin_inset Formula $s_{0,0}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+The same series of steps are performed over and over in some number of rounds,
+ Nr (10 for AES-128, 12 for AES-192 and 14 for AES-256).
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float algorithm
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset listings
+lstparams "basicstyle={\small\ttfamily}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+Cipher(byte in[4*4], byte out[4*4], word w[4*(Nr+1)])
+\end_layout
+
+\begin_layout Plain Layout
+
+begin
+\end_layout
+
+\begin_layout Plain Layout
+
+    byte state[4,Nb]
+\end_layout
+
+\begin_layout Plain Layout
+
+    state = in
+\end_layout
+
+\begin_layout Plain Layout
+
+    AddRoundKey(state, w[0, 3])
+\end_layout
+
+\begin_layout Plain Layout
+
+    for round = 1 step 1 to Nr–1
+\end_layout
+
+\begin_layout Plain Layout
+
+        SubBytes(state)
+\end_layout
+
+\begin_layout Plain Layout
+
+        ShiftRows(state)
+\end_layout
+
+\begin_layout Plain Layout
+
+        MixColumns(state)
+\end_layout
+
+\begin_layout Plain Layout
+
+        AddRoundKey(state, w[round*4, (round+1)*4-1])
+\end_layout
+
+\begin_layout Plain Layout
+
+    end for
+\end_layout
+
+\begin_layout Plain Layout
+
+    SubBytes(state)
+\end_layout
+
+\begin_layout Plain Layout
+
+    ShiftRows(state)
+\end_layout
+
+\begin_layout Plain Layout
+
+    AddRoundKey(state, w[4*4, (Nr+1)*4-1])
+\end_layout
+
+\begin_layout Plain Layout
+
+    out = state
+\end_layout
+
+\begin_layout Plain Layout
+
+end
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Pseudo code for AES encryption, as presented in FIPS197
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph*
+SubBytes
+\end_layout
+
+\begin_layout Standard
+Substitute each byte of the state according to a substitution table (sbox).
+ let 
+\begin_inset Formula $SB[x]$
+\end_inset
+
+ be the substitution of byte 
+\begin_inset Formula $x$
+\end_inset
+
+ according to the sbox.
+ 
+\begin_inset Formula \[
+\left[\begin{array}{c}
+s_{0,c}^{\prime}\\
+s_{1,c}^{\prime}\\
+s_{2,c}^{\prime}\\
+s_{3,c}^{\prime}\end{array}\right]=\left[\begin{array}{c}
+SB[s_{0,c}]\\
+SB[s_{1,c}]\\
+SB[s_{2,c}]\\
+SB[s_{3,c}]\end{array}\right]\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph*
+ShiftRows
+\end_layout
+
+\begin_layout Standard
+Rotate row 
+\begin_inset Formula $i$
+\end_inset
+
+ by 
+\begin_inset Formula $i$
+\end_inset
+
+ bytes.
+\begin_inset Formula \[
+\left[\begin{array}{c}
+s_{0,c}^{\prime}\\
+s_{1,c}^{\prime}\\
+s_{2,c}^{\prime}\\
+s_{3,c}^{\prime}\end{array}\right]=\left[\begin{array}{c}
+s_{0,c}\\
+s_{1,c+1\bmod4}\\
+s_{2,c+2\bmod4}\\
+s_{3,c+3\bmod4}\end{array}\right]\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph*
+MixColumns
+\end_layout
+
+\begin_layout Standard
+Each column is multiplied with a fixed matrix.
+ The arithmetic operations are finite field operations in GF(256) 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "FIPS197"
+
+\end_inset
+
+.
+\begin_inset Formula \[
+\left[\begin{array}{c}
+s_{0,c}^{\prime}\\
+s_{1,c}^{\prime}\\
+s_{2,c}^{\prime}\\
+s_{3,c}^{\prime}\end{array}\right]=\left[\begin{array}{cccc}
+02 & 03 & 01 & 01\\
+01 & 02 & 03 & 01\\
+01 & 01 & 02 & 03\\
+03 & 01 & 01 & 02\end{array}\right]\left[\begin{array}{c}
+s_{0,c}\\
+s_{1,c}\\
+s_{2,c}\\
+s_{3,c}\end{array}\right]\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Paragraph*
+AddRoundKey
+\end_layout
+
+\begin_layout Standard
+Simply xor each byte of the kurrent round key with the state.
+ 
+\begin_inset Formula \[
+\left[\begin{array}{c}
+s_{0,c}^{\prime}\\
+s_{1,c}^{\prime}\\
+s_{2,c}^{\prime}\\
+s_{3,c}^{\prime}\end{array}\right]=\left[\begin{array}{c}
+s_{0,c}\\
+s_{1,c}\\
+s_{2,c}\\
+s_{3,c}\end{array}\right]\oplus\left[\begin{array}{c}
+k_{0,c}\\
+k_{1,c}\\
+k_{2,c}\\
+k_{3,c}\end{array}\right]_{round}\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Efficient implementation using tables
+\end_layout
+
+\begin_layout Standard
+We can optimize the cipher by combining each of the steps to one.
+ In column matrix notation, SubBytes, ShiftRows, MixColumns and AddRoundKey
+ combined to one gives a single expression for each column.
+\begin_inset Formula \[
+\left[\begin{array}{c}
+s_{0,c}^{\prime}\\
+s_{1,c}^{\prime}\\
+s_{2,c}^{\prime}\\
+s_{3,c}^{\prime}\end{array}\right]=\left[\begin{array}{cccc}
+02 & 03 & 01 & 01\\
+01 & 02 & 03 & 01\\
+01 & 01 & 02 & 03\\
+03 & 01 & 01 & 02\end{array}\right]\left[\begin{array}{c}
+SB[s_{0,c}]\\
+SB[s_{1,c+1\bmod4}]\\
+SB[s_{2,c+2\bmod4}]\\
+SB[s_{3,c+3\bmod4}]\end{array}\right]\oplus\left[\begin{array}{c}
+k_{0,c}\\
+k_{1,c}\\
+k_{2,c}\\
+k_{3,c}\end{array}\right]_{round}\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We can split this into five components, using the fact that addition under
+ GF(256) is xor.
+ 
+\begin_inset Formula \[
+\left[\begin{array}{c}
+s_{0,c}^{\prime}\\
+s_{1,c}^{\prime}\\
+s_{2,c}^{\prime}\\
+s_{3,c}^{\prime}\end{array}\right]=SB[s_{0,c}]\left[\begin{array}{c}
+02\\
+01\\
+01\\
+03\end{array}\right]\oplus SB[s_{1,c+1\bmod4}]\left[\begin{array}{c}
+03\\
+02\\
+01\\
+01\end{array}\right]\oplus SB[s_{2,c+2\bmod4}]\left[\begin{array}{c}
+01\\
+03\\
+02\\
+01\end{array}\right]\oplus SB[s_{1,c+3\bmod4}]\left[\begin{array}{c}
+01\\
+01\\
+03\\
+02\end{array}\right]\oplus\left[\begin{array}{c}
+k_{0,c}\\
+k_{1,c}\\
+k_{2,c}\\
+k_{3,c}\end{array}\right]_{round}\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Each of the first four components are 32-bit words as a function of byte
+ value.
+ Each of these can be precomputed and stored in tables of size 
+\begin_inset Formula $4\times256=1KB$
+\end_inset
+
+.
+ Let 
+\begin_inset Formula $\bullet$
+\end_inset
+
+ denote finite field multiplication.
+ Define tables 
+\begin_inset Formula $T_{1}$
+\end_inset
+
+ to 
+\begin_inset Formula $T_{4}$
+\end_inset
+
+.
+ 
+\begin_inset Formula \[
+T_{1}[x]=\left[\begin{array}{c}
+02\bullet SB[x]\\
+01\bullet SB[x]\\
+01\bullet SB[x]\\
+03\bullet SB[x]\end{array}\right],\, T_{2}[x]=\left[\begin{array}{c}
+03\bullet SB[x]\\
+02\bullet SB[x]\\
+01\bullet SB[x]\\
+01\bullet SB[x]\end{array}\right],\, T_{3}[x]=\left[\begin{array}{c}
+01\bullet SB[x]\\
+03\bullet SB[x]\\
+02\bullet SB[x]\\
+01\bullet SB[x]\end{array}\right],\, T_{4}[x]=\left[\begin{array}{c}
+01\bullet SB[x]\\
+01\bullet SB[x]\\
+03\bullet SB[x]\\
+02\bullet SB[x]\end{array}\right]\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Finally, we can write a round of encryption as
+\begin_inset Formula \[
+\left[\begin{array}{c}
+s_{0,c}^{\prime}\\
+s_{1,c}^{\prime}\\
+s_{2,c}^{\prime}\\
+s_{3,c}^{\prime}\end{array}\right]=T_{1}[s_{0,c}]\oplus T_{2}[s_{1,c+1\bmod4}]\oplus T_{3}[s_{2,c+2\bmod4}]\oplus T_{4}[s_{1,c+3\bmod4}]\oplus\left[\begin{array}{c}
+k_{0,c}\\
+k_{1,c}\\
+k_{2,c}\\
+k_{3,c}\end{array}\right]_{round}\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Results
+\end_layout
+
+\begin_layout Standard
+Using the optimized table implementation we achieved a throughput of about
+ 30MB/s, a huge improvement over the straight-forward implementation.
+ This is still not as fast as highly optimized C/assembly implementations
+ like openssl, however we do believe that the gap can be minimized by further
+ optimization.
+ 
+\end_layout
+
+\begin_layout Section
+Implementing SHA
+\end_layout
+
+\begin_layout Section
+Implementing RSA
+\end_layout
+
+\begin_layout Section
+Conclusions
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+label "FIPS197"
+key "FIPS197"
+
+\end_inset
+
+Federal Information Processing Standards Publication 197: Advanced Encryption
+ Standard (AES)
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+label "Dlang.org"
+key "Dlang"
+
+\end_inset
+
+Official homepage of the D programming language (dlang.org)
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+label "Phobos"
+key "Phobos"
+
+\end_inset
+
+D standard library (Phobos).
+ (https://github.com/D-Programming-Language/phobos)
+\end_layout
+
+\begin_layout Bibliography
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+label "Intel"
+key "Intel"
+
+\end_inset
+
+Intel® Advanced Encryption Standard (AES) Instructions Set - Rev 3
+\end_layout
+
+\end_body
+\end_document
