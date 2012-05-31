@@ -109,7 +109,7 @@ class RSAKeyGenerator
     public RSAKeyPair newKeyPair()
     {
         BigInt e = 17;
-    
+
         BigInt p, q;
         do
         {
@@ -121,7 +121,7 @@ class RSAKeyGenerator
         BigInt N = p*q;
         BigInt totient = (p-ONE)*(q-ONE);
 
-        
+
         BigInt d = modularMultiplicativeInverse(e, totient);
 
         RSAKeyPair keypair = RSAKeyPair (bitLength, N, e, d, p, q);
@@ -267,18 +267,18 @@ class RSAKeyGenerator
         {
             inv += m;
         }
-    
+
         return inv;
     }
 
-   /* unittest
+    /* unittest
     {
-        assert(RSAKeyGenerator.modularMultiplicativeInverse(BigInt("3"), BigInt("11")) == BigInt("4"),
-               "Modular Multiplicative Inverse simplest case failed.");
-        assert(RSAKeyGenerator.modularMultiplicativeInverse(BigInt("17"), BigInt("3120")) == BigInt("2753"), 
-               "Modular Multiplicative Inverse case 2 failed.");
-        assert(RSAKeyGenerator.modularMultiplicativeInverse(BigInt("7136894511284418597546878456"), BigInt("589743216878943213987498637986541")) 
-               == BigInt("28667610335819904460119453172384"), "Modular Multiplicative Inverse large case failed.");
+    assert(RSAKeyGenerator.modularMultiplicativeInverse(BigInt("3"), BigInt("11")) == BigInt("4"),
+    "Modular Multiplicative Inverse simplest case failed.");
+    assert(RSAKeyGenerator.modularMultiplicativeInverse(BigInt("17"), BigInt("3120")) == BigInt("2753"), 
+    "Modular Multiplicative Inverse case 2 failed.");
+    assert(RSAKeyGenerator.modularMultiplicativeInverse(BigInt("7136894511284418597546878456"), BigInt("589743216878943213987498637986541")) 
+    == BigInt("28667610335819904460119453172384"), "Modular Multiplicative Inverse large case failed.");
     }*/
 
     /*
@@ -319,17 +319,17 @@ class RSAKeyGenerator
 
         }
 
-       // writeln("GCD = ", (x*a) + (y*b));
+        // writeln("GCD = ", (x*a) + (y*b));
 
         return lastx;
     }
 
     /*unittest
     {
-        assert(RSAKeyGenerator.extendedEuclidX(BigInt("4864"), BigInt("3458")) == BigInt("32"), 
-               "Inverse Extended Euclid simple case failed.");
-        assert(RSAKeyGenerator.extendedEuclidX(BigInt("45004045"), BigInt("2321544121")) == BigInt("-783915036"), 
-               "Inverse Extended Euclid case 2 failed.");
+    assert(RSAKeyGenerator.extendedEuclidX(BigInt("4864"), BigInt("3458")) == BigInt("32"), 
+    "Inverse Extended Euclid simple case failed.");
+    assert(RSAKeyGenerator.extendedEuclidX(BigInt("45004045"), BigInt("2321544121")) == BigInt("-783915036"), 
+    "Inverse Extended Euclid case 2 failed.");
     }*/
 
 }
@@ -450,7 +450,7 @@ class RSA
         if(maxlengthBytes <= 0)
         {
             throw new Exception("The RSA modulus length " ~ to!string(keypair.bitLength>>3) ~ " bytes is too small to encrypt with OAEP padding."
-                               " Add at least " ~ to!string(-maxlengthBytes + 1)~ " bytes to the modulus in order to encrypt one byte of data.");
+                                " Add at least " ~ to!string(-maxlengthBytes + 1)~ " bytes to the modulus in order to encrypt one byte of data.");
         }
 
         if(message.length > maxlengthBytes)
@@ -463,7 +463,7 @@ class RSA
         ubyte[] messagePadded = new ubyte[keypair.bitLength>>3];
         ubyte[] maskedSeed = messagePadded[1..hashLength+1];
         ubyte[] maskedDb = messagePadded[hashLength+1..$];
-        
+
         // Create the initial state of the messagePadded
 
         messagePadded[0] = 0;
@@ -479,11 +479,11 @@ class RSA
         ubyte[] dbMask;
         OAEP_MGF(hashfn, maskedSeed, (keypair.bitLength>>3) - hashLength - 1, dbMask);
         maskedDb[] = dbMask[] ^ maskedDb[];
-        
+
         ubyte[] seedMask;
         OAEP_MGF(hashfn, maskedDb, hashLength, seedMask);
         maskedSeed[] = seedMask[] ^ maskedSeed[];
-        
+
         delete dbMask;
         delete seedMask;
         delete message;
@@ -583,30 +583,30 @@ class RSA
 
     /*unittest
     {
-        BigInt p = "61";
-        BigInt q = "53";
-        BigInt n = p*q;
-        BigInt totient = (p-RSAKeyGenerator.one)*(q-RSAKeyGenerator.one);
-        BigInt e = "17";
-        BigInt d = RSAKeyGenerator.modularMultiplicativeInverse(e, totient);
-        RSAKeyPair fixed_pair = RSAKeyPair(12, n, e, d, p, q );
-        RSA rsaobj = new RSA(fixed_pair, null, RSA.PaddingMode.NO_PADDING );
+    BigInt p = "61";
+    BigInt q = "53";
+    BigInt n = p*q;
+    BigInt totient = (p-RSAKeyGenerator.one)*(q-RSAKeyGenerator.one);
+    BigInt e = "17";
+    BigInt d = RSAKeyGenerator.modularMultiplicativeInverse(e, totient);
+    RSAKeyPair fixed_pair = RSAKeyPair(12, n, e, d, p, q );
+    RSA rsaobj = new RSA(fixed_pair, null, RSA.PaddingMode.NO_PADDING );
 
-        ubyte[] input = cast(ubyte[])x"41"; // 65 decimal
+    ubyte[] input = cast(ubyte[])x"41"; // 65 decimal
 
-        ubyte[] encrypted = rsaobj.encrypt(input);
-        ubyte[] decrypted = rsaobj.decrypt(encrypted);
+    ubyte[] encrypted = rsaobj.encrypt(input);
+    ubyte[] decrypted = rsaobj.decrypt(encrypted);
 
-        scope(failure)
-        {
-            writeln("RSA enryption/decryption test failed:");
-            writeln("Input: ", input);
-            writeln("Encrypted: ", encrypted);
-            writeln("Decrypted: ", decrypted);
-        }
+    scope(failure)
+    {
+    writeln("RSA enryption/decryption test failed:");
+    writeln("Input: ", input);
+    writeln("Encrypted: ", encrypted);
+    writeln("Decrypted: ", decrypted);
+    }
 
-        assert(encrypted == BigInt("2790").toUbyteArray(), "Encrypted value is not correct, expecting 2790.");
-        assert(decrypted == input, "Decrypting does not give back original input.");
+    assert(encrypted == BigInt("2790").toUbyteArray(), "Encrypted value is not correct, expecting 2790.");
+    assert(decrypted == input, "Decrypting does not give back original input.");
 
     }
 
@@ -614,20 +614,20 @@ class RSA
 
     unittest
     {
-        BigInt p = "61";
-        BigInt q = "53";
-        RSAKeyPair fixed_pair = RSAKeyPair(360, p*q, BigInt("17"),  BigInt("2753"), p, q );
-        RSA rsaobj = new RSA(fixed_pair, new AlwaysOnePRNG, RSA.PaddingMode.OAEP); 
-        ubyte[] padded_message = rsaobj.padOAEP(new SHA1, [2, 4]);
-        writeln(padded_message);
-        assert(padded_message == [0, 112, 101, 75, 4, 137, 194, 65, 208, 224, 191, 232,
-        37, 238, 227, 108, 218, 58, 191, 28, 192, 135, 42, 139, 113, 204, 216, 96,
-        249, 249, 134, 42, 26, 34, 179, 56, 197, 32, 188, 94, 253, 82, 28, 11, 192],
-               "The padded OAEP message is not correct.");
-        scope(failure)
-        {
-            writeln("RSA enryption with OAEP padding mode failed.");
-        }
+    BigInt p = "61";
+    BigInt q = "53";
+    RSAKeyPair fixed_pair = RSAKeyPair(360, p*q, BigInt("17"),  BigInt("2753"), p, q );
+    RSA rsaobj = new RSA(fixed_pair, new AlwaysOnePRNG, RSA.PaddingMode.OAEP); 
+    ubyte[] padded_message = rsaobj.padOAEP(new SHA1, [2, 4]);
+    writeln(padded_message);
+    assert(padded_message == [0, 112, 101, 75, 4, 137, 194, 65, 208, 224, 191, 232,
+    37, 238, 227, 108, 218, 58, 191, 28, 192, 135, 42, 139, 113, 204, 216, 96,
+    249, 249, 134, 42, 26, 34, 179, 56, 197, 32, 188, 94, 253, 82, 28, 11, 192],
+    "The padded OAEP message is not correct.");
+    scope(failure)
+    {
+    writeln("RSA enryption with OAEP padding mode failed.");
+    }
     }*/
 
 }
@@ -645,7 +645,7 @@ void main()
     IRandom prng = new InsecurePRNG();
     auto generator = new RSAKeyGenerator(prng, keysize);
     RSAKeyPair keypair;
-    
+
     auto f = File ("primes.txt", "w");
 
     foreach(i; 0..num)
@@ -654,7 +654,7 @@ void main()
         f.writeln("#");
         f.writeln(keypair.p);
         f.writeln(keypair.q);
-        
+
         /*writeln(keypair.p);
         writeln(keypair.q);*/
 
