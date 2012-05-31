@@ -1,27 +1,22 @@
 module crypto.mode.ecb;
 
+import crypto.mode.scheme;
 import crypto.blockcipher.aes;
-import std.file, std.stdio, std.array, std.stream;
-import std.datetime;
+import crypto.blockcipher.blockcipher;
 
-public interface SymmetricScheme
-{
-    public void encrypt(InputStream input, OutputStream output);
-    public void decrypt(InputStream input, OutputStream output);
-}
+import std.file, std.stdio, std.array, std.stream, std.datetime;
+import std.range;
 
 class ECB : SymmetricScheme
 {
-    private BlockCipher blockCipher;
-
-    this(BlockCipher bc)
+    this(BlockCipher cipher)
     {
-        blockCipher = bc;
+        super(cipher);
     }
 
     public void encrypt(InputStream input, OutputStream output)
     {
-        const uint blockSize = blockCipher.blockSize();
+        const uint blockSize = cipher.blockSize();
         ubyte[] buffer = new ubyte[blockSize];
         uint bytesRead;
         long encryptTime = 0;
@@ -30,7 +25,7 @@ class ECB : SymmetricScheme
         while ((bytesRead = input.read(buffer)) == blockSize)
         {
             long tStart = Clock.currStdTime();
-            blockCipher.encrypt(buffer);
+            cipher.encrypt(buffer);
             long tEnd = Clock.currStdTime();
             encryptTime += (tEnd - tStart);
             output.write(buffer);
@@ -40,21 +35,21 @@ class ECB : SymmetricScheme
         ubyte paddingByte = cast(ubyte)(blockSize - bytesRead);
         for (uint i = bytesRead; i < blockSize; ++i)
             buffer[i] = paddingByte;
-        blockCipher.encrypt(buffer);
+        cipher.encrypt(buffer);
         output.write(buffer);
 
-        //write("Encryption time: "); write(encryptTime / 10000000.0); writeln(" seconds");
+        //write("Encryption time (ECB): "); write(encryptTime / 10000000.0); writeln(" seconds");
         //blockCipher.reportTiming();
     }
     
     public void decrypt(InputStream input, OutputStream output)
     {
-        const uint blockSize = blockCipher.blockSize();
+        const uint blockSize = cipher.blockSize();
         ubyte[] buffer = new ubyte[blockSize];
 
         while (input.read(buffer))
         {
-            blockCipher.decrypt(buffer);
+            cipher.decrypt(buffer);
 
             // Remove padding in last block
             if (input.eof())

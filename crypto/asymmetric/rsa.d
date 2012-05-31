@@ -632,7 +632,7 @@ class RSA
 
 }
 
-void main()
+void main2()
 {
 
     int num = 50;

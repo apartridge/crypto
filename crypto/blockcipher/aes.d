@@ -1,13 +1,6 @@
 module crypto.blockcipher.aes;
 
-
-public interface BlockCipher
-{
-    public void encrypt(ubyte[] message);
-    public void decrypt(ubyte[] cipher);
-
-    @property public const uint blockSize();
-}
+import crypto.blockcipher.blockcipher;
 
 /* 
  * AES standard: http://csrc.nist.gov/publications/fips/fips197/fips-197.pdf
@@ -32,7 +25,7 @@ class AES128 : AES!(4, 4, 10)
         auto aes = new AES128(key);
 
         aes.encrypt(buffer);
-        assert(buffer == cipher, byteToHexString(buffer));
+        assert(buffer == cipher);
 
         aes.decrypt(buffer);
         assert(buffer == message);
@@ -53,10 +46,10 @@ class AES192 : AES!(4, 6, 12)
         auto aes = new AES192(key);
 
         aes.encrypt(buffer);
-        assert(buffer == cipher, byteToHexString(buffer));
+        assert(buffer == cipher);
 
         aes.decrypt(buffer);
-        assert(buffer == message, byteToHexString(buffer));
+        assert(buffer == message);
     }
 }
 
@@ -86,7 +79,26 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
     (Nb == 4 && Nk == 6 && Nr == 12) ||
     (Nb == 4 && Nk == 8 && Nr == 14)) : BlockCipher
 {
-    static const ubyte[] inv_sbox = [
+    static const ubyte[] sbox = [
+        0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
+        0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
+        0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
+        0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
+        0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
+        0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
+        0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
+        0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
+        0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
+        0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
+        0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
+        0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
+        0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
+        0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
+        0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
+        0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
+    ];
+
+    static const ubyte[] isbox = [
         0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
         0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
         0x54, 0x7b, 0x94, 0x32, 0xa6, 0xc2, 0x23, 0x3d, 0xee, 0x4c, 0x95, 0x0b, 0x42, 0xfa, 0xc3, 0x4e,
@@ -280,9 +292,9 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         0x7101a839, 0xdeb30c08, 0x9ce4b4d8, 0x90c15664, 0x6184cb7b, 0x70b632d5, 0x745c6c48, 0x4257b8d0,
     ];
 
-    uint[] state; // Pointer to state
-    uint[Nb*(Nr+1)] w; // Key
-    uint[Nb*(Nr+1)] dw; // Inverse key with precomputed InvMixColumns
+    uint[] state;
+    uint[Nb*(Nr+1)] w;
+    uint[Nb*(Nr+1)] dw;
 
     public this(ubyte[] k)
     {
@@ -293,47 +305,40 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
     {
         uint *stateptr = cast(uint*)message; 
         state = stateptr[0 .. Nb];
+        uint[Nb] t;
+        uint round = 0;
+
         //printHexInt(0, "input", state);
 
-        // Add initial round key (should be automatically unrolled)
-        for (int i = 0; i < Nb; ++i)
-            state[i] ^= w[i];
-
-        // Temporaries between each round (should be register allocated)
-        uint[4] tmp;
-        uint round = 0;
+        // Add initial round key
+        state[0] ^= w[0];
+        state[1] ^= w[1];
+        state[2] ^= w[2];
+        state[3] ^= w[3];
+        t = state[0 .. Nb];
 
         //printHexInt(0, "k_sch", w[0 .. Nb]);
         //printHexInt(1, "start", state);
+
         while (round++ < Nr - 1)
         {
             // SubBytes, ShiftRows and MixColumns
-            // Can use rot instruction to get 1KB of table
-            // TODO: Manually unroll ?
-            tmp[] = state[0 .. Nb];
-            for (uint col = 0; col < Nb; ++col)
-            {
-                uint a = tmp[col] & 0xff;
-                uint b = (tmp[(col+1) % Nb] >> 8) & 0xff;
-                uint c = (tmp[(col+2) % Nb] >> 16) & 0xff;
-                uint d = (tmp[(col+3) % Nb] >> 24) & 0xff;
-                state[col] = t1[a] ^ t2[b] ^ t3[c] ^ t4[d] ^ w[round*Nb + col];
-                //state[col] = t1[a] ^ rotate!1(t1[b]) ^ rotate!2(t1[c]) ^ rotate!3(t1[d]) ^ w[round*Nb + col];
-            }
+            state[0] = t1[cast(ubyte)(t[0])] ^ t2[cast(ubyte)(t[1] >> 8)] ^ t3[cast(ubyte)(t[2] >> 16)] ^ t4[cast(ubyte)(t[3] >> 24)] ^ w[round*Nb];
+            state[1] = t1[cast(ubyte)(t[1])] ^ t2[cast(ubyte)(t[2] >> 8)] ^ t3[cast(ubyte)(t[3] >> 16)] ^ t4[cast(ubyte)(t[0] >> 24)] ^ w[round*Nb+1];
+            state[2] = t1[cast(ubyte)(t[2])] ^ t2[cast(ubyte)(t[3] >> 8)] ^ t3[cast(ubyte)(t[0] >> 16)] ^ t4[cast(ubyte)(t[1] >> 24)] ^ w[round*Nb+2];
+            state[3] = t1[cast(ubyte)(t[3])] ^ t2[cast(ubyte)(t[0] >> 8)] ^ t3[cast(ubyte)(t[1] >> 16)] ^ t4[cast(ubyte)(t[2] >> 24)] ^ w[round*Nb+3];
+            t[] = state[0 .. Nb];
+
             //printHexInt(round, "k_sch", w[round*Nb .. (round+1)*Nb]);
             //printHexInt(round+1, "start", state);
         }
 
-        // SubBytes and ShiftRows, eliminate sbox by masking T-table
-        tmp[] = state[0 .. Nb];
-        for (uint col = 0; col < Nb; ++col)
-        {
-            uint a = t4[tmp[col] & 0xff] & 0x000000ff;
-            uint b = t4[(tmp[(col+1) % Nb] >> 8) & 0xff] & 0x0000ff00;
-            uint c = t2[(tmp[(col+2) % Nb] >> 16) & 0xff] & 0x00ff0000;
-            uint d = t2[(tmp[(col+3) % Nb] >> 24) & 0xff] & 0xff000000;
-            state[col] = a ^ b ^ c ^ d ^ w[Nr*Nb + col];
-        }
+        // SubBytes and ShiftRows
+        state[0] = sbox[cast(ubyte)(t[0])] ^ ((sbox[cast(ubyte)(t[1] >> 8)]) << 8) ^ ((sbox[cast(ubyte)(t[2] >> 16)]) << 16) ^ ((sbox[cast(ubyte)(t[3] >> 24)]) << 24) ^ w[round*Nb];
+        state[1] = sbox[cast(ubyte)(t[1])] ^ ((sbox[cast(ubyte)(t[2] >> 8)]) << 8) ^ ((sbox[cast(ubyte)(t[3] >> 16)]) << 16) ^ ((sbox[cast(ubyte)(t[0] >> 24)]) << 24) ^ w[round*Nb+1];
+        state[2] = sbox[cast(ubyte)(t[2])] ^ ((sbox[cast(ubyte)(t[3] >> 8)]) << 8) ^ ((sbox[cast(ubyte)(t[0] >> 16)]) << 16) ^ ((sbox[cast(ubyte)(t[1] >> 24)]) << 24) ^ w[round*Nb+2];
+        state[3] = sbox[cast(ubyte)(t[3])] ^ ((sbox[cast(ubyte)(t[0] >> 8)]) << 8) ^ ((sbox[cast(ubyte)(t[1] >> 16)]) << 16) ^ ((sbox[cast(ubyte)(t[2] >> 24)]) << 24) ^ w[round*Nb+3];
+
         //printHexInt(round, "k_sch", dw[Nr*Nb .. (Nr+1)*Nb]);
         //printHex(round, "out", state);
     }
@@ -342,42 +347,39 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
     {
         uint *stateptr = cast(uint*)cipher; 
         state = stateptr[0 .. Nb];
+        uint[4] t;
+
         //printHexInt(0, "iinput", state);
         //printHexInt(0, "ik_sch", dw[Nr*Nb .. (Nr+1)*Nb]);
 
         // Add last round key
-        for (int i = 0; i < Nb; ++i)
-            state[i] ^= dw[Nr*Nb + i];
+        state[0] ^= dw[Nr*Nb];
+        state[1] ^= dw[Nr*Nb+1];
+        state[2] ^= dw[Nr*Nb+2];
+        state[3] ^= dw[Nr*Nb+3];
+        t[] = state[0 .. Nb];
 
-        uint[4] tmp;
         //printHexInt(1, "istart", state);
 
         for (int round = Nr - 1; round > 0; --round)
         {
-            // SubBytes, ShiftRows and MixColumns
-            tmp[] = state[0 .. Nb];
-            for (uint col = 0; col < Nb; ++col)
-            {
-                uint a = tmp[col] & 0xff;
-                uint b = (tmp[(col+3) % Nb] >> 8) & 0xff;
-                uint c = (tmp[(col+2) % Nb] >> 16) & 0xff;
-                uint d = (tmp[(col+1) % Nb] >> 24) & 0xff;
-                state[col] = it[a] ^ rotate!1(it[b]) ^ rotate!2(it[c]) ^ rotate!3(it[d]) ^ dw[round*Nb + col];
-            }
+            // InvSubBytes, InvShiftRows and InvMixColumns combined
+            state[0] = it[cast(ubyte)(t[0])] ^ rotate!1(it[cast(ubyte)(t[3] >> 8)]) ^ rotate!2(it[cast(ubyte)(t[2] >> 16)]) ^ rotate!3(it[cast(ubyte)(t[1] >> 24)]) ^ dw[round*Nb];
+            state[1] = it[cast(ubyte)(t[1])] ^ rotate!1(it[cast(ubyte)(t[0] >> 8)]) ^ rotate!2(it[cast(ubyte)(t[3] >> 16)]) ^ rotate!3(it[cast(ubyte)(t[2] >> 24)]) ^ dw[round*Nb+1];
+            state[2] = it[cast(ubyte)(t[2])] ^ rotate!1(it[cast(ubyte)(t[1] >> 8)]) ^ rotate!2(it[cast(ubyte)(t[0] >> 16)]) ^ rotate!3(it[cast(ubyte)(t[3] >> 24)]) ^ dw[round*Nb+2];
+            state[3] = it[cast(ubyte)(t[3])] ^ rotate!1(it[cast(ubyte)(t[2] >> 8)]) ^ rotate!2(it[cast(ubyte)(t[1] >> 16)]) ^ rotate!3(it[cast(ubyte)(t[0] >> 24)]) ^ dw[round*Nb+3];
+            t[] = state[0 .. Nb];
+
             //printHexInt(Nr - round, "ik_sch", dw[round*Nb .. (round+1)*Nb]);
             //printHexInt(Nr - round + 1, "istart", state);
         }
 
-        // InvSubBytes and InvShiftRows
-        tmp[] = state[0 .. Nb];
-        for (uint col = 0; col < Nb; ++col)
-        {
-            uint a = inv_sbox[tmp[col] & 0xff];
-            uint b = inv_sbox[(tmp[(col+3) % Nb] >> 8) & 0xff] << 8;
-            uint c = inv_sbox[(tmp[(col+2) % Nb] >> 16) & 0xff] << 16;
-            uint d = inv_sbox[(tmp[(col+1) % Nb] >> 24) & 0xff] << 24;
-            state[col] = a ^ b ^ c ^ d ^ dw[col];
-        }
+        // InvSubBytes and InvShiftRows combined
+        state[0] = isbox[cast(ubyte)(t[0])] ^ ((isbox[cast(ubyte)(t[3] >> 8)]) << 8) ^ ((isbox[cast(ubyte)(t[2] >> 16)]) << 16) ^ ((isbox[cast(ubyte)(t[1] >> 24)]) << 24) ^ dw[0];
+        state[1] = isbox[cast(ubyte)(t[1])] ^ ((isbox[cast(ubyte)(t[0] >> 8)]) << 8) ^ ((isbox[cast(ubyte)(t[3] >> 16)]) << 16) ^ ((isbox[cast(ubyte)(t[2] >> 24)]) << 24) ^ dw[1];
+        state[2] = isbox[cast(ubyte)(t[2])] ^ ((isbox[cast(ubyte)(t[1] >> 8)]) << 8) ^ ((isbox[cast(ubyte)(t[0] >> 16)]) << 16) ^ ((isbox[cast(ubyte)(t[3] >> 24)]) << 24) ^ dw[2];
+        state[3] = isbox[cast(ubyte)(t[3])] ^ ((isbox[cast(ubyte)(t[2] >> 8)]) << 8) ^ ((isbox[cast(ubyte)(t[1] >> 16)]) << 16) ^ ((isbox[cast(ubyte)(t[0] >> 24)]) << 24) ^ dw[3];
+
         //printHexInt(10, "ik_sch", dw[0 .. Nb]);
         //printHex(10, "iout", state);
     }
@@ -390,10 +392,10 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
 
     private static uint subWord(uint w)
     {
-        return  (t3[(w >> 24) & 0xff] & 0xff000000)        |
-               ((t3[(w >> 16) & 0xff] & 0x000000ff) << 16) |
-               ((t3[(w >> 8 ) & 0xff] & 0x000000ff) << 8)  |
-                (t3[(w & 0xff)]       & 0x000000ff);
+        return sbox[cast(ubyte)(w)] |
+               sbox[cast(ubyte)(w >> 8)] << 8 |
+               sbox[cast(ubyte)(w >> 16)] << 16 |
+               sbox[cast(ubyte)(w >> 24)] << 24;
     }
 
     unittest
@@ -406,25 +408,20 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
         return (w >> 8) | (w << 24);
     }
 
-    // Need to compute xtimes(a, b). Use table lookup in inverse table, and 
-    // inv_sbox(s_box(x)) = x to avoid implementing finite field multiplication in GF(256)
+    // Need to compute xtimes(a, b). Use table lookup in inverse table (over 0x0b0d090e), 
+    // and isbox(sbox(x)) = x to avoid implementing finite field multiplication in GF(256).
     private static void invMixColumns(uint[] s)
     {
-        auto s_box(ubyte a)
-        {
-            return t4[a] & 0xff;
-        }
-
         for (uint col = 0; col < 4; ++col)
         {
             ubyte a = s[col] & 0xff;
             ubyte b = (s[col] >> 8) & 0xff;
             ubyte c = (s[col] >> 16) & 0xff;
             ubyte d = (s[col] >> 24) & 0xff;
-            s[col]  =   (it[s_box(a)] & 0xff)        ^ ((it[s_box(b)] >> 24) & 0xff) ^ ((it[s_box(c)] >> 16) & 0xff) ^ ((it[s_box(d)] >> 8) & 0xff);
-            s[col] |= (((it[s_box(a)] >> 8) & 0xff)  ^ (it[s_box(b)] & 0xff)         ^ ((it[s_box(c)] >> 24) & 0xff) ^ ((it[s_box(d)] >> 16) & 0xff)) << 8;
-            s[col] |= (((it[s_box(a)] >> 16) & 0xff) ^ ((it[s_box(b)] >> 8) & 0xff)  ^ (it[s_box(c)] & 0xff)         ^ ((it[s_box(d)] >> 24) & 0xff)) << 16;
-            s[col] |= (((it[s_box(a)] >> 24) & 0xff) ^ ((it[s_box(b)] >> 16) & 0xff) ^ ((it[s_box(c)] >> 8) & 0xff)  ^ (it[s_box(d)] & 0xff))         << 24;
+            s[col]  =   (it[sbox[a]] & 0xff)        ^ ((it[sbox[b]] >> 24) & 0xff) ^ ((it[sbox[c]] >> 16) & 0xff) ^ ((it[sbox[d]] >> 8) & 0xff);
+            s[col] |= (((it[sbox[a]] >> 8) & 0xff)  ^ (it[sbox[b]] & 0xff)         ^ ((it[sbox[c]] >> 24) & 0xff) ^ ((it[sbox[d]] >> 16) & 0xff)) << 8;
+            s[col] |= (((it[sbox[a]] >> 16) & 0xff) ^ ((it[sbox[b]] >> 8) & 0xff)  ^ (it[sbox[c]] & 0xff)         ^ ((it[sbox[d]] >> 24) & 0xff)) << 16;
+            s[col] |= (((it[sbox[a]] >> 24) & 0xff) ^ ((it[sbox[b]] >> 16) & 0xff) ^ ((it[sbox[c]] >> 8) & 0xff)  ^ (it[sbox[d]] & 0xff))         << 24;
         }
     }
 
@@ -467,7 +464,7 @@ if ((Nb == 4 && Nk == 4 && Nr == 10) ||
             invMixColumns(dw[i*Nb .. (i+1)*Nb]);
     }
 
-    @property public const uint blockSize()
+    @property public const size_t blockSize()
     {
         return Nb*4;
     }
