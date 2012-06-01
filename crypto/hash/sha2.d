@@ -1,5 +1,9 @@
 module crypto.hash.sha2;
 
+/*
+Implements SHA2 cryptographic hash functions
+*/
+
 private import crypto.hash.d;
 private import crypto.hash.merkle_damgaard;
 private import std.bitmanip;

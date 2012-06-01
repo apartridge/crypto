@@ -273,12 +273,12 @@ class RSAKeyGenerator
 
     /* unittest
     {
-    assert(RSAKeyGenerator.modularMultiplicativeInverse(BigInt("3"), BigInt("11")) == BigInt("4"),
-    "Modular Multiplicative Inverse simplest case failed.");
-    assert(RSAKeyGenerator.modularMultiplicativeInverse(BigInt("17"), BigInt("3120")) == BigInt("2753"), 
-    "Modular Multiplicative Inverse case 2 failed.");
-    assert(RSAKeyGenerator.modularMultiplicativeInverse(BigInt("7136894511284418597546878456"), BigInt("589743216878943213987498637986541")) 
-    == BigInt("28667610335819904460119453172384"), "Modular Multiplicative Inverse large case failed.");
+        assert(RSAKeyGenerator.modularMultiplicativeInverse(BigInt("3"), BigInt("11")) == BigInt("4"),
+        "Modular Multiplicative Inverse simplest case failed.");
+        assert(RSAKeyGenerator.modularMultiplicativeInverse(BigInt("17"), BigInt("3120")) == BigInt("2753"), 
+        "Modular Multiplicative Inverse case 2 failed.");
+        assert(RSAKeyGenerator.modularMultiplicativeInverse(BigInt("7136894511284418597546878456"), BigInt("589743216878943213987498637986541")) 
+        == BigInt("28667610335819904460119453172384"), "Modular Multiplicative Inverse large case failed.");
     }*/
 
     /*
@@ -290,9 +290,6 @@ class RSAKeyGenerator
         BigInt x = "0";
         BigInt lastx = "1";
 
-        /*BigInt y = "1";
-        BigInt lasty = "0";*/
-
         while( b != ZERO)
         {
             BigInt quotient = a / b;
@@ -300,26 +297,11 @@ class RSAKeyGenerator
             a = b;
             b = temp;
 
-
-
-
             temp = x;
-
             x = lastx - (quotient*x);
             lastx = temp;
 
-
-            /*temp = y;
-            y = lasty - (quotient*y);
-            lasty = temp;*/
-
-            /*writeln("b ", b);
-            writeln("lastx ", b);*/
-
-
         }
-
-        // writeln("GCD = ", (x*a) + (y*b));
 
         return lastx;
     }
@@ -436,7 +418,7 @@ class RSA
     private ubyte[] encryptOAEP(T = SHA1)(ubyte[] message)
     {
         ubyte[] padded_message = padOAEP(new T, message);
-        //writeln("padOAEP Padded Message ", padded_message.length, " \n", padded_message);
+        writeln("padOAEP Padded Message ", padded_message.length, " \n", padded_message);
         return this.encryptPlain(padded_message);
     }
 
@@ -500,7 +482,7 @@ class RSA
 
     private ubyte[] depadOAEM(Hash hashfn, ubyte[] padded_message)
     {
-        //writeln("DEPAD Padded Message: ", padded_message.length, " \n",  padded_message);
+        writeln("DEPAD Padded Message: ", padded_message.length, " \n",  padded_message);
 
         if(padded_message[0] != 0)
         {
@@ -632,7 +614,7 @@ class RSA
 
 }
 
-void main2()
+void main()
 {
 
     int num = 50;

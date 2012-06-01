@@ -21,8 +21,9 @@ abstract class Hash
     public ubyte[] digest(ubyte[] buffer = null)
     {
         if(buffer == null)
+        {
             buffer = new ubyte[digestBytes()];
-
+        }
         buffer = digestBuffer(buffer);
         return buffer;
     }

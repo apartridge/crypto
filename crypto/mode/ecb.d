@@ -14,7 +14,7 @@ class ECB : SymmetricScheme
         super(cipher);
     }
 
-    public void encrypt(InputStream input, OutputStream output)
+    public override void encrypt(InputStream input, OutputStream output)
     {
         const uint blockSize = cipher.blockSize();
         ubyte[] buffer = new ubyte[blockSize];
@@ -42,7 +42,7 @@ class ECB : SymmetricScheme
         //blockCipher.reportTiming();
     }
     
-    public void decrypt(InputStream input, OutputStream output)
+    public override void decrypt(InputStream input, OutputStream output)
     {
         const uint blockSize = cipher.blockSize();
         ubyte[] buffer = new ubyte[blockSize];
