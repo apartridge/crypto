@@ -1,21 +1,29 @@
-#LyX 1.6.8 created this file. For more info see http://www.lyx.org/
-\lyxformat 345
+#LyX 2.0 created this file. For more info see http://www.lyx.org/
+\lyxformat 413
 \begin_document
 \begin_header
 \textclass article
 \use_default_options true
+\maintain_unincluded_children false
 \language english
+\language_package default
 \inputencoding auto
+\fontencoding global
 \font_roman lmodern
 \font_sans default
 \font_typewriter default
 \font_default_family default
+\use_non_tex_fonts false
 \font_sc false
 \font_osf false
 \font_sf_scale 100
 \font_tt_scale 100
 
 \graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
 \paperfontsize default
 \spacing single
 \use_hyperref false
@@ -23,21 +31,31 @@
 \use_geometry true
 \use_amsmath 1
 \use_esint 1
+\use_mhchem 1
+\use_mathdots 1
 \cite_engine basic
 \use_bibtopic false
+\use_indices false
 \paperorientation portrait
+\suppress_date false
+\use_refstyle 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
 \secnumdepth 3
 \tocdepth 3
 \paragraph_separation indent
-\defskip medskip
+\paragraph_indentation default
 \quotes_language english
 \papercolumns 1
 \papersides 1
 \paperpagestyle default
 \tracking_changes false
 \output_changes false
-\author "" 
-\author "" 
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
 \end_header
 
 \begin_body
@@ -67,7 +85,7 @@ Many of the more popular programming languages supports cryptographic algorithms
  It has been suggested to add native crypto implementation in the D standard
  library (Phobos), but so far this has not been done.
  In particular, there seems to be no standard implementation of asymmetric
- encryption olike RSA in D.
+ encryption like RSA in D.
  There is however, third party libraries for basic cryptography, but they
  are either incomplete or not under active development.
  
@@ -112,21 +130,7 @@ status open
 
 \begin_layout Plain Layout
 
-#!/usr/bin/rdmd
-\end_layout
-
-\begin_layout Plain Layout
-
-// Computes average line length for standard input.
-\end_layout
-
-\begin_layout Plain Layout
-
 import std.stdio;
-\end_layout
-
-\begin_layout Plain Layout
-
 \end_layout
 
 \begin_layout Plain Layout
@@ -166,12 +170,7 @@ void main() {
 
 \begin_layout Plain Layout
 
-    writeln("Average line length: ",
-\end_layout
-
-\begin_layout Plain Layout
-
-        lines ? sumLength / lines : 0);
+    writeln("Average line length: ", lines ? sumLength / lines : 0);
 \end_layout
 
 \begin_layout Plain Layout
@@ -188,7 +187,8 @@ void main() {
 \begin_inset Caption
 
 \begin_layout Plain Layout
-Example code in D
+Example code in D.
+ Computes average line length for standard input.
 \end_layout
 
 \end_inset
@@ -224,7 +224,9 @@ dlang.org
 \end_layout
 
 \begin_layout Standard
-For more information about D, we refer to the official homepage
+The current incarnation is known as D2, and its standard library is called
+ Phobos.
+ For more information about D, we refer to the official homepage
 \begin_inset CommandInset citation
 LatexCommand cite
 key "Dlang"
@@ -244,7 +246,8 @@ Array slicing
 \begin_layout Standard
 In D, an array can either be statically allocated (with size known at compile-ti
 me), or dynamically (on the heap at run-time).
- A reference to an array will carry some metadata (a 
+ A reference to an array carries some metadata, the array length, making
+ it a 
 \begin_inset Quotes eld
 \end_inset
 
@@ -252,7 +255,7 @@ fat pointer
 \begin_inset Quotes erd
 \end_inset
 
-), such as array length.
+.
  One can obtain a new reference (in constant time) to a subset of an array
  by slicing.
  For instance, given heap-allocated array A, the expression 
@@ -269,7 +272,7 @@ A[5 ..
 
 \end_inset
 
- returns a reference to elements of A beginning at element 5.
+ returns a reference to elements of A, starting at element 5.
  The special token $ is an alias of the array length.
  
 \end_layout
@@ -350,8 +353,9 @@ key "Phobos"
 
 \end_inset
 
-, as well as in our framework.
- 
+.
+ We also use unittests extensively, testing the results of the AES and hash
+ functions, for instance.
 \end_layout
 
 \begin_layout Standard
@@ -359,7 +363,7 @@ key "Phobos"
 placement H
 wide false
 sideways false
-status open
+status collapsed
 
 \begin_layout Plain Layout
 \begin_inset listings
@@ -444,6 +448,94 @@ key "Intel"
  However, we expect these instructions to be supported eventually, which
  would greatly increase the speed of AES implementations in D.
  
+\end_layout
+
+\begin_layout Paragraph*
+Generic programming with templates
+\end_layout
+
+\begin_layout Standard
+Templates is a powerful feature that allows classes or functions to operate
+ on generic types, without having to rewrite the function or class for each
+ type.
+ The classic example is a swap function, which makes sense for most data
+ types, not only ints or floats.
+ They can also be used for complex compile time evalutations of functions.
+ Templates has it's role in C++, but have heavy syntax and often impairs
+ compilation times.
+ In D, they have much cleaner syntax, making them 
+\begin_inset Quotes eld
+\end_inset
+
+compile time arguments
+\begin_inset Quotes erd
+\end_inset
+
+ of sorts.
+ In addition, D supports the 
+\begin_inset Formula $\mathtt{static}$
+\end_inset
+
+ keyword before 
+\begin_inset Formula $\mathtt{if}$
+\end_inset
+
+, making it a compile time conditional.
+ We utilize these features heavily in our library, giving us the ability
+ to abstract away details like key length, internal data type or output
+ byte length from the algorithms, and specifying that for each incarnation
+ (for instance, in the SHA family).
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float algorithm
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset listings
+lstparams "basicstyle={\ttfamily}"
+inline false
+status open
+
+\begin_layout Plain Layout
+
+class Bar(T) {
+\end_layout
+
+\begin_layout Plain Layout
+
+T member;
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+A templated class in D.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Subsection
@@ -576,12 +668,15 @@ state
 
 .
  
-\begin_inset Formula \[
+\begin_inset Formula 
+\[
 \left[\begin{array}{cccc}
 s_{0,0} & s_{0,1} & s_{0,2} & s_{0,3}\\
 s_{1,0} & s_{1,1} & s_{1,2} & s_{1,3}\\
 s_{2,0} & s_{2,1} & s_{2,2} & s_{2,3}\\
-s_{3,0} & s_{3,1} & s_{3,2} & s_{3,3}\end{array}\right]\]
+s_{3,0} & s_{3,1} & s_{3,2} & s_{3,3}
+\end{array}\right]
+\]
 
 \end_inset
 
@@ -734,16 +829,20 @@ Substitute each byte of the state according to a substitution table (sbox).
 
  according to the sbox.
  
-\begin_inset Formula \[
+\begin_inset Formula 
+\[
 \left[\begin{array}{c}
 s_{0,c}^{\prime}\\
 s_{1,c}^{\prime}\\
 s_{2,c}^{\prime}\\
-s_{3,c}^{\prime}\end{array}\right]=\left[\begin{array}{c}
+s_{3,c}^{\prime}
+\end{array}\right]=\left[\begin{array}{c}
 SB[s_{0,c}]\\
 SB[s_{1,c}]\\
 SB[s_{2,c}]\\
-SB[s_{3,c}]\end{array}\right]\]
+SB[s_{3,c}]
+\end{array}\right]
+\]
 
 \end_inset
 
@@ -764,16 +863,20 @@ Rotate row
 \end_inset
 
  bytes.
-\begin_inset Formula \[
+\begin_inset Formula 
+\[
 \left[\begin{array}{c}
 s_{0,c}^{\prime}\\
 s_{1,c}^{\prime}\\
 s_{2,c}^{\prime}\\
-s_{3,c}^{\prime}\end{array}\right]=\left[\begin{array}{c}
+s_{3,c}^{\prime}
+\end{array}\right]=\left[\begin{array}{c}
 s_{0,c}\\
 s_{1,c+1\bmod4}\\
 s_{2,c+2\bmod4}\\
-s_{3,c+3\bmod4}\end{array}\right]\]
+s_{3,c+3\bmod4}
+\end{array}\right]
+\]
 
 \end_inset
 
@@ -794,20 +897,25 @@ key "FIPS197"
 \end_inset
 
 .
-\begin_inset Formula \[
+\begin_inset Formula 
+\[
 \left[\begin{array}{c}
 s_{0,c}^{\prime}\\
 s_{1,c}^{\prime}\\
 s_{2,c}^{\prime}\\
-s_{3,c}^{\prime}\end{array}\right]=\left[\begin{array}{cccc}
+s_{3,c}^{\prime}
+\end{array}\right]=\left[\begin{array}{cccc}
 02 & 03 & 01 & 01\\
 01 & 02 & 03 & 01\\
 01 & 01 & 02 & 03\\
-03 & 01 & 01 & 02\end{array}\right]\left[\begin{array}{c}
+03 & 01 & 01 & 02
+\end{array}\right]\left[\begin{array}{c}
 s_{0,c}\\
 s_{1,c}\\
 s_{2,c}\\
-s_{3,c}\end{array}\right]\]
+s_{3,c}
+\end{array}\right]
+\]
 
 \end_inset
 
@@ -821,20 +929,25 @@ AddRoundKey
 \begin_layout Standard
 Simply xor each byte of the kurrent round key with the state.
  
-\begin_inset Formula \[
+\begin_inset Formula 
+\[
 \left[\begin{array}{c}
 s_{0,c}^{\prime}\\
 s_{1,c}^{\prime}\\
 s_{2,c}^{\prime}\\
-s_{3,c}^{\prime}\end{array}\right]=\left[\begin{array}{c}
+s_{3,c}^{\prime}
+\end{array}\right]=\left[\begin{array}{c}
 s_{0,c}\\
 s_{1,c}\\
 s_{2,c}\\
-s_{3,c}\end{array}\right]\oplus\left[\begin{array}{c}
+s_{3,c}
+\end{array}\right]\oplus\left[\begin{array}{c}
 k_{0,c}\\
 k_{1,c}\\
 k_{2,c}\\
-k_{3,c}\end{array}\right]_{round}\]
+k_{3,c}
+\end{array}\right]_{round}
+\]
 
 \end_inset
 
@@ -849,24 +962,30 @@ Efficient implementation using tables
 We can optimize the cipher by combining each of the steps to one.
  In column matrix notation, SubBytes, ShiftRows, MixColumns and AddRoundKey
  combined to one gives a single expression for each column.
-\begin_inset Formula \[
+\begin_inset Formula 
+\[
 \left[\begin{array}{c}
 s_{0,c}^{\prime}\\
 s_{1,c}^{\prime}\\
 s_{2,c}^{\prime}\\
-s_{3,c}^{\prime}\end{array}\right]=\left[\begin{array}{cccc}
+s_{3,c}^{\prime}
+\end{array}\right]=\left[\begin{array}{cccc}
 02 & 03 & 01 & 01\\
 01 & 02 & 03 & 01\\
 01 & 01 & 02 & 03\\
-03 & 01 & 01 & 02\end{array}\right]\left[\begin{array}{c}
+03 & 01 & 01 & 02
+\end{array}\right]\left[\begin{array}{c}
 SB[s_{0,c}]\\
 SB[s_{1,c+1\bmod4}]\\
 SB[s_{2,c+2\bmod4}]\\
-SB[s_{3,c+3\bmod4}]\end{array}\right]\oplus\left[\begin{array}{c}
+SB[s_{3,c+3\bmod4}]
+\end{array}\right]\oplus\left[\begin{array}{c}
 k_{0,c}\\
 k_{1,c}\\
 k_{2,c}\\
-k_{3,c}\end{array}\right]_{round}\]
+k_{3,c}
+\end{array}\right]_{round}
+\]
 
 \end_inset
 
@@ -877,32 +996,40 @@ k_{3,c}\end{array}\right]_{round}\]
 We can split this into five components, using the fact that addition under
  GF(256) is xor.
  
-\begin_inset Formula \[
+\begin_inset Formula 
+\[
 \left[\begin{array}{c}
 s_{0,c}^{\prime}\\
 s_{1,c}^{\prime}\\
 s_{2,c}^{\prime}\\
-s_{3,c}^{\prime}\end{array}\right]=SB[s_{0,c}]\left[\begin{array}{c}
+s_{3,c}^{\prime}
+\end{array}\right]=SB[s_{0,c}]\left[\begin{array}{c}
 02\\
 01\\
 01\\
-03\end{array}\right]\oplus SB[s_{1,c+1\bmod4}]\left[\begin{array}{c}
+03
+\end{array}\right]\oplus SB[s_{1,c+1\bmod4}]\left[\begin{array}{c}
 03\\
 02\\
 01\\
-01\end{array}\right]\oplus SB[s_{2,c+2\bmod4}]\left[\begin{array}{c}
+01
+\end{array}\right]\oplus SB[s_{2,c+2\bmod4}]\left[\begin{array}{c}
 01\\
 03\\
 02\\
-01\end{array}\right]\oplus SB[s_{1,c+3\bmod4}]\left[\begin{array}{c}
+01
+\end{array}\right]\oplus SB[s_{1,c+3\bmod4}]\left[\begin{array}{c}
 01\\
 01\\
 03\\
-02\end{array}\right]\oplus\left[\begin{array}{c}
+02
+\end{array}\right]\oplus\left[\begin{array}{c}
 k_{0,c}\\
 k_{1,c}\\
 k_{2,c}\\
-k_{3,c}\end{array}\right]_{round}\]
+k_{3,c}
+\end{array}\right]_{round}
+\]
 
 \end_inset
 
@@ -932,24 +1059,30 @@ Each of the first four components are 32-bit words as a function of byte
 
 .
  
-\begin_inset Formula \[
+\begin_inset Formula 
+\[
 T_{1}[x]=\left[\begin{array}{c}
 02\bullet SB[x]\\
 01\bullet SB[x]\\
 01\bullet SB[x]\\
-03\bullet SB[x]\end{array}\right],\, T_{2}[x]=\left[\begin{array}{c}
+03\bullet SB[x]
+\end{array}\right],\, T_{2}[x]=\left[\begin{array}{c}
 03\bullet SB[x]\\
 02\bullet SB[x]\\
 01\bullet SB[x]\\
-01\bullet SB[x]\end{array}\right],\, T_{3}[x]=\left[\begin{array}{c}
+01\bullet SB[x]
+\end{array}\right],\, T_{3}[x]=\left[\begin{array}{c}
 01\bullet SB[x]\\
 03\bullet SB[x]\\
 02\bullet SB[x]\\
-01\bullet SB[x]\end{array}\right],\, T_{4}[x]=\left[\begin{array}{c}
+01\bullet SB[x]
+\end{array}\right],\, T_{4}[x]=\left[\begin{array}{c}
 01\bullet SB[x]\\
 01\bullet SB[x]\\
 03\bullet SB[x]\\
-02\bullet SB[x]\end{array}\right]\]
+02\bullet SB[x]
+\end{array}\right]
+\]
 
 \end_inset
 
@@ -958,16 +1091,20 @@ T_{1}[x]=\left[\begin{array}{c}
 
 \begin_layout Standard
 Finally, we can write a round of encryption as
-\begin_inset Formula \[
+\begin_inset Formula 
+\[
 \left[\begin{array}{c}
 s_{0,c}^{\prime}\\
 s_{1,c}^{\prime}\\
 s_{2,c}^{\prime}\\
-s_{3,c}^{\prime}\end{array}\right]=T_{1}[s_{0,c}]\oplus T_{2}[s_{1,c+1\bmod4}]\oplus T_{3}[s_{2,c+2\bmod4}]\oplus T_{4}[s_{1,c+3\bmod4}]\oplus\left[\begin{array}{c}
+s_{3,c}^{\prime}
+\end{array}\right]=T_{1}[s_{0,c}]\oplus T_{2}[s_{1,c+1\bmod4}]\oplus T_{3}[s_{2,c+2\bmod4}]\oplus T_{4}[s_{1,c+3\bmod4}]\oplus\left[\begin{array}{c}
 k_{0,c}\\
 k_{1,c}\\
 k_{2,c}\\
-k_{3,c}\end{array}\right]_{round}\]
+k_{3,c}
+\end{array}\right]_{round}
+\]
 
 \end_inset
 
@@ -982,7 +1119,7 @@ Results
 Using the optimized table implementation we achieved a throughput of about
  30MB/s, a huge improvement over the straight-forward implementation.
  This is still not as fast as highly optimized C/assembly implementations
- like openssl, however we do believe that the gap can be minimized by further
+ like OpenSSL, however we do believe that the gap can be minimized by further
  optimization.
  
 \end_layout
@@ -991,8 +1128,423 @@ Using the optimized table implementation we achieved a throughput of about
 Implementing SHA
 \end_layout
 
+\begin_layout Standard
+The library contains hashs function SHA1 and SHA2 (SHA224, SHA256, SHA384
+ and SHA512).
+ These are implemented using a Merkle-Damgård base class which handles putting
+ data into the hash function, required internal buffering and constructs
+ common to MD hash functions.
+ A common Hash base class defines the interface and includes convinience
+ functions and templates for its use.
+ The implementations follow the outline and uses the nomenclature as defined
+ by the SHA standard.
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "SHS"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We were interested in comparing the speed of our SHA implementation with
+ current widely employed implementations, namely the OpenSSL version.
+ We created a simple benchmark test.
+ In each round, we take the hash of 
+\begin_inset Quotes eld
+\end_inset
+
+The quick brown fox jumps over the lazy dog
+\begin_inset Quotes erd
+\end_inset
+
+ as well as a 446 character 
+\begin_inset Quotes eld
+\end_inset
+
+Lorem Ipsum
+\begin_inset Quotes erd
+\end_inset
+
+ string.
+ We include the longer string to stress test the buffering capabilities
+ of the implementations.
+ All hash functions return binary results to avoid overhead of convert to
+ strings.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Tabular
+<lyxtabular version="3" rows="3" columns="5">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+D-Crypto
+\begin_inset Formula $*$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+D-Crypto
+\begin_inset Formula $\dagger$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+OpenSSL 1.0.0e 
+\begin_inset Formula $\ddagger$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Java 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+100 000 iterations
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.886 s
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.810 s
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.237 s
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.744 s
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+1 000 000 iterations
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+6.212 s
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+5.926 s
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+2.345 s
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+5.925 s
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Speeds mesaured on Intel i7 720QM.
+ 
+\begin_inset Formula $*$
+\end_inset
+
+ Compiled with DMD 2.058 and optimization flags -O -inline -release.
+ 
+\begin_inset Formula $\dagger$
+\end_inset
+
+ Compiled with DMD 2.058 and flags -O -noboundscheck -inline -release (removed
+ bounds check).
+ 
+\begin_inset Formula $\ddagger$
+\end_inset
+
+ Compiled with Visual C++ v10 in Release configuration with /02 (
+\begin_inset Quotes eld
+\end_inset
+
+Maximize Speed
+\begin_inset Quotes erd
+\end_inset
+
+) and 
+\begin_inset Quotes eld
+\end_inset
+
+Favouring Faster Code
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The results show that our version is about 2.5 times slower than OpenSSL,
+ and somewhat slower than Java.
+ We have compared our implementation with OpenSSL.
+ Their current implementation depends heavily on macros, unrolling the rounds
+ loop and chaining round variables smarter than we do.
+ It is obvious that all the time is spent inside round loops and these optimizat
+ions have an effect.
+ Before we could give fair judgement on the speed of C versus D code, our
+ version would need optimizations.
+ It is also possible, by rewriting some of the equations, to implement parts
+ of it using SIMD vector instructions, supported by newer processors.
+ However, we have not pursued these optimizations further in this project.
+\end_layout
+
 \begin_layout Section
 Implementing RSA
+\end_layout
+
+\begin_layout Standard
+The library contains RSA Key Generation and encryption/decryption features.
+ We use the Phobos BigInt library.
+ However, we found it to be incomplete for our use.
+ It was missing a modular exponentiation method, and utility functions like
+ converting from and to byte arrays.
+ We forked BigInt and added these functions ourselves.
+\end_layout
+
+\begin_layout Standard
+The RSA Key Generation contains all functionality necessary to create RSA
+ keys.
+ For prime verification, first we check the number modulo the lowest primes.
+ We then verify the candidates using the Miller-Rabin primality test.
+ At each iteration, get a random number 
+\begin_inset Formula $a$
+\end_inset
+
+.
+ A composite number will fail the test for 
+\begin_inset Formula $3/4$
+\end_inset
+
+ of all 
+\begin_inset Formula $a$
+\end_inset
+
+'s less than the number.
+ Our key generation will find a composite number with a probability of at
+ most 
+\begin_inset Formula $\dfrac{1}{4^{N}}$
+\end_inset
+
+, where we have set 
+\begin_inset Formula $N=40$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+We have implemented a Random generator interface and a simple insecure Random
+ Number generator, based on a Mersenne Twister engine which is a part of
+ the D standard library.
+ This is only for testing, and could create the same keys if two persons
+ run it at the same second.
+ For cryptographic use, we would have to implement a much stronger random
+ generator and a plentiful resource of entropy.
+ We could create a more sophisticated PRNG using a hash function.
+ The OpenSSL website has a short article on the construction of such a PRNG.
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "OpenSSL Rand Documentation"
+
+\end_inset
+
+ In any case, the user of the library would need to 
+\begin_inset Quotes eld
+\end_inset
+
+plug in
+\begin_inset Quotes erd
+\end_inset
+
+ some source of entropy.
+ It could be a hardware device, a daemon running on the client that captures
+ mouse and keyboard actions, etc.
+ It is outside the scope of our project and a problem for anyone who would
+ want to use any library to create RSA keys themselves.
+\end_layout
+
+\begin_layout Standard
+The Encryption/Decryption supports both unpadded (insecure) and padded modes,
+ using OAEP.
+ OAEP was introduced in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "OAEP"
+
+\end_inset
+
+ and gives RSA powerful security properties.
+ We follow the standard defined in PKCS#1 2.1 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "PKCS1 v2.1"
+
+\end_inset
+
+, which differ in the details from the suggested scheme of the original
+ paper.
+ We use SHA1 within the Mask Generation Function.
+ RSAES-OAEP can operate on messages of length up to k – 2hashLength – 2
+ bytes, with k as the size of the modulus in bytes, and hashLength as 128
+ in our case.
+ This introduces randomness at the cost of a smaller message space than
+ unpadded or PKCS v1.5.
+ 
+\end_layout
+
+\begin_layout Standard
+The library would be much more useful if it had functionality for importing
+ existing RSA keys created in other applications.
+ For instance, we should support implementing keys in the PKCS#8 format
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "PKCS8"
+
+\end_inset
+
+.
+ Future work should include implementing PKCS#1 v1.5 padding.
+ RSA Security recommends RSAES-OAEP for new applications, but includes PKCS1-v1.5
+ for compatibility.
+ However, v1.5 is still heavily used.
+ For instance, the OpenPGP standard only supports v1.5 padding 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "RFC4880"
+
+\end_inset
+
+.
+ We've not implemented the signature schemes in PCKS#1 v2.1.
+ This would also be an useful addition to the library.
 \end_layout
 
 \begin_layout Section
@@ -1000,6 +1552,7 @@ Conclusions
 \end_layout
 
 \begin_layout Bibliography
+\labelwidthstring References
 \begin_inset CommandInset bibitem
 LatexCommand bibitem
 label "FIPS197"
@@ -1012,6 +1565,7 @@ Federal Information Processing Standards Publication 197: Advanced Encryption
 \end_layout
 
 \begin_layout Bibliography
+\labelwidthstring References
 \begin_inset CommandInset bibitem
 LatexCommand bibitem
 label "Dlang.org"
@@ -1023,6 +1577,7 @@ Official homepage of the D programming language (dlang.org)
 \end_layout
 
 \begin_layout Bibliography
+\labelwidthstring References
 \begin_inset CommandInset bibitem
 LatexCommand bibitem
 label "Phobos"
@@ -1035,6 +1590,7 @@ D standard library (Phobos).
 \end_layout
 
 \begin_layout Bibliography
+\labelwidthstring References
 \begin_inset CommandInset bibitem
 LatexCommand bibitem
 label "Intel"
@@ -1043,6 +1599,122 @@ key "Intel"
 \end_inset
 
 Intel® Advanced Encryption Standard (AES) Instructions Set - Rev 3
+\end_layout
+
+\begin_layout Bibliography
+\labelwidthstring References
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+label "SHS"
+key "SHS"
+
+\end_inset
+
+
+\begin_inset Quotes erd
+\end_inset
+
+Secure Hash Standard (SHS)
+\begin_inset Quotes erd
+\end_inset
+
+, http://csrc.nist.gov/publications/fips/fips180-3/fips180-3_final.pdf
+\end_layout
+
+\begin_layout Bibliography
+\labelwidthstring References
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+label "OAEP"
+key "OAEP"
+
+\end_inset
+
+
+\begin_inset Quotes eld
+\end_inset
+
+Optimal Asymmetric Encryption How to Encrypt with RSA
+\begin_inset Quotes erd
+\end_inset
+
+, http://cseweb.ucsd.edu/users/mihir/papers/oae.pdf
+\end_layout
+
+\begin_layout Bibliography
+\labelwidthstring References
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "PKCS1 v2.1"
+
+\end_inset
+
+
+\begin_inset Quotes eld
+\end_inset
+
+PKCS #1 v2.1: RSA Cryptography Standard
+\begin_inset Quotes eld
+\end_inset
+
+, ftp://ftp.rsasecurity.com/pub/pkcs/pkcs-1/pkcs-1v2-1.pdf
+\end_layout
+
+\begin_layout Bibliography
+\labelwidthstring References
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "PKCS8"
+
+\end_inset
+
+
+\begin_inset Quotes eld
+\end_inset
+
+Private-Key Information Syntax Specification Version 1.2
+\begin_inset Quotes erd
+\end_inset
+
+, http://tools.ietf.org/html/rfc5208
+\end_layout
+
+\begin_layout Bibliography
+\labelwidthstring References
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "RFC4880"
+
+\end_inset
+
+
+\begin_inset Quotes eld
+\end_inset
+
+RFC 4880: OpenPGP Message Format
+\begin_inset Quotes erd
+\end_inset
+
+, http://tools.ietf.org/html/rfc4880#section-13.1
+\end_layout
+
+\begin_layout Bibliography
+\labelwidthstring References
+\begin_inset CommandInset bibitem
+LatexCommand bibitem
+key "OpenSSL Rand Documentation"
+
+\end_inset
+
+
+\begin_inset Quotes eld
+\end_inset
+
+OpenSSL Rand Documentation
+\begin_inset Quotes erd
+\end_inset
+
+, http://www.openssl.org/docs/crypto/rand.html 
 \end_layout
 
 \end_body
