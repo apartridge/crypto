@@ -81,7 +81,7 @@ Introduction
 \begin_layout Standard
 Many of the more popular programming languages supports cryptographic algorithms
  like symmetric ancryption, hashing and public key cryptography as part
- of a standard library or with third party libraries.
+ of a standard library.
  It has been suggested to add native crypto implementation in the D standard
  library (Phobos), but so far this has not been done.
  In particular, there seems to be no standard implementation of asymmetric
@@ -209,7 +209,7 @@ So why yet another language you might ask? The creators of D argue that
  Native code is especially important in cryptography, as the algorithms
  needs to be as fast as possible.
  At the same time, the elevated level of abstraction and high-level features
- compared to C maked D an interesting target for implementation.
+ compared to C makes D an interesting target for implementation.
  
 \end_layout
 
@@ -226,7 +226,7 @@ dlang.org
 \begin_layout Standard
 The current incarnation is known as D2, and its standard library is called
  Phobos.
- For more information about D, we refer to the official homepage
+ For more information about D, we refer to the official homepage 
 \begin_inset CommandInset citation
 LatexCommand cite
 key "Dlang"
@@ -234,7 +234,11 @@ key "Dlang"
 \end_inset
 
 .
- Below we will highlight some of the interesting features of the language,
+ 
+\end_layout
+
+\begin_layout Standard
+Below we will highlight some of the interesting features of the language,
  and describe how they impacted our implementation.
  
 \end_layout
@@ -279,8 +283,7 @@ A[5 ..
 
 \begin_layout Standard
 Initially the memory model of D can be a bit elusive, as the level of abstractio
-n is a tiny bit above what you might be used to in C or C++ and you still
- want .
+n is a tiny bit above what you might be used to in C or C++.
  But when the different copy and assign semantics become clear, the elegant
  array syntax of the language helps a great deal in producing elegant, as
  well as efficient code.
@@ -335,9 +338,22 @@ Unit tests
 \begin_layout Standard
 Test-driven development is as popular as ever, but few languages has actually
  been design with this paradighm in mind from the very beginning.
- D supports the unittest keyword, which declares a block statement that
- is supposed to run (and hopefully pass without assertion errors) every
- time the program is compiled and run.
+ D supports the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily}"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+unittest
+\end_layout
+
+\end_inset
+
+ keyword, which declares a block statement that is supposed to run (and
+ hopefully pass without assertion errors) every time the program is compiled
+ and run.
  
 \end_layout
 
@@ -426,23 +442,35 @@ D has a very cool feature for integrating assembly code directly in the
  In C and C++, different compilers have different solutions to mixing assembly
  together with the program code.
  To make this seamless, D has its own assembler, and assembly code can be
- used by the asm keyword.
+ used by the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily}"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+asm
+\end_layout
+
+\end_inset
+
+ keyword.
  This is especially useful for implementing highly optimized algorithms,
  or whenevery you want to use special SSE instructions.
  
 \end_layout
 
 \begin_layout Standard
-A drawback with using it's own assembler, D does not support every instruction
- on every CPU.
- Recently Intel released their AES-NI 
+Recently Intel released their AES-NI 
 \begin_inset CommandInset citation
 LatexCommand cite
 key "Intel"
 
 \end_inset
 
- instruction set extension for hardware accelerated AES.
+ instruction set extension for hardware accelerated AES, which would be
+ very handy for implementing faster AES.
  Unfortunately, D's assembler does not (yet) support these instructions,
  so we were unable to utilize this in our implementation.
  However, we expect these instructions to be supported eventually, which
@@ -1119,9 +1147,8 @@ Results
 Using the optimized table implementation we achieved a throughput of about
  30MB/s, a huge improvement over the straight-forward implementation.
  This is still not as fast as highly optimized C/assembly implementations
- like OpenSSL, however we do believe that the gap can be minimized by further
- optimization.
- 
+ like OpenSSL, however we do believe that the gap can be reduced by further
+ optimization like more loop unrolling, inline assembly etc.
 \end_layout
 
 \begin_layout Section
@@ -1549,6 +1576,19 @@ key "RFC4880"
 
 \begin_layout Section
 Conclusions
+\end_layout
+
+\begin_layout Standard
+We have implemented AES, SHA and RSA in D.
+ We would of course have liked to be able to cover more primitives, as well
+ as high-level schemes, but encountered performance challenges along the
+ way.
+ We have learned that hardware-specific implementations and optimizations
+ are extremely important in order to get high performance.
+ Our results show that our semi-optimized solutions are generally quite
+ fast, but still not as fast as the more common C implementations.
+ Further work is required to make our library competitive with f.ex openssl.
+ 
 \end_layout
 
 \begin_layout Bibliography
