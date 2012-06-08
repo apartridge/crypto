@@ -71,7 +71,18 @@ Lars Kirkholt Melhus and Stian Pedersen
 \begin_layout Abstract
 In this paper we describe our experiences with implementing some common
  cryptographic primitives in the D programming language.
- The result can be found at http://github.com/apartridge/crypto.
+ The result can be found at 
+\begin_inset Flex URL
+status open
+
+\begin_layout Plain Layout
+
+http://github.com/apartridge/crypto
+\end_layout
+
+\end_inset
+
+.
 \end_layout
 
 \begin_layout Section
@@ -79,14 +90,14 @@ Introduction
 \end_layout
 
 \begin_layout Standard
-Many of the more popular programming languages supports cryptographic algorithms
- like symmetric ancryption, hashing and public key cryptography as part
+Many of the more popular programming languages support cryptographic algorithms
+ like symmetric encryption, hashing and public key cryptography as part
  of a standard library.
  It has been suggested to add native crypto implementation in the D standard
  library (Phobos), but so far this has not been done.
  In particular, there seems to be no standard implementation of asymmetric
  encryption like RSA in D.
- There is however, third party libraries for basic cryptography, but they
+ There are however, third party libraries for basic cryptography, but they
  are either incomplete or not under active development.
  
 \end_layout
@@ -204,7 +215,7 @@ Example code in D.
 \begin_layout Standard
 So why yet another language you might ask? The creators of D argue that
  the language fills a need for a powerful modern systems programming language.
- It combined features such as managed (garbage collected) code like C# and
+ It combines features such as managed (garbage collected) code like C# and
  Java, yet it compiles to efficient native machine code like C or C++.
  Native code is especially important in cryptography, as the algorithms
  needs to be as fast as possible.
@@ -302,8 +313,8 @@ status open
 
 \begin_layout Plain Layout
 
-invMixColumns( dw[i*Nb ..
- (i+1)*Nb] );
+invMixColumns( dw[i*4 ..
+ (i+1)*4] );
 \end_layout
 
 \end_inset
@@ -316,7 +327,7 @@ invMixColumns( dw[i*Nb ..
 
 \begin_layout Plain Layout
 Example of calling a function (from the AES module) with a slice of array
- dw, starting at index i*Nb and ending at index (i+1)*Nb.
+ dw, starting at index i*4 and ending at index (i+1)*4.
  No copying is performed, only a fat pointer is passed to the function invMixCol
 umns.
 \end_layout
@@ -337,7 +348,7 @@ Unit tests
 
 \begin_layout Standard
 Test-driven development is as popular as ever, but few languages has actually
- been design with this paradighm in mind from the very beginning.
+ been designed with this paradigm in mind from the very beginning.
  D supports the 
 \begin_inset listings
 lstparams "basicstyle={\ttfamily}"
@@ -457,7 +468,7 @@ asm
 
  keyword.
  This is especially useful for implementing highly optimized algorithms,
- or whenevery you want to use special SSE instructions.
+ and whenever you want to use very specific instructions.
  
 \end_layout
 
@@ -572,7 +583,7 @@ Cryptography
 
 \begin_layout Standard
 We have looked at three basic cryptographic primitives; block ciphers, hash
- functions and pyblic key cryptography (RSA).
+ functions and public key cryptography (RSA).
  These are all low-level primitives, which we can use to build high-level
  protocols.
  We provide a brief description of each of them.
@@ -614,8 +625,17 @@ A hash function is a one-way function
 Block ciphers
 \end_layout
 
+\begin_layout Standard
+A block cipher is ...
+\end_layout
+
 \begin_layout Paragraph*
 RSA
+\end_layout
+
+\begin_layout Standard
+RSA is a public-key cryptography scheme.
+ It works by ...
 \end_layout
 
 \begin_layout Section
@@ -657,16 +677,12 @@ openssl speed aes-128-cbc
 \end_inset
 
  yields a throughput of about 80MB/s.
- (NB: On hardware withouth AES-NI support).
+ (NB: On hardware without AES-NI support).
 \end_layout
 
 \begin_layout Standard
-To see how we can do better, let's look at what happens to a given column
- 
-\begin_inset Formula $c$
-\end_inset
-
- of the state during a round of encryption.
+To see how we can do better, let's look at what happens during a round of
+ AES encryption.
  
 \end_layout
 
@@ -681,7 +697,7 @@ The standard decribes the algorithm's internal operation as a series of
 state
 \emph default
 .
- Each byte is numbered 
+ The bytes are numbered 
 \begin_inset Formula $s_{0,0}$
 \end_inset
 
@@ -712,7 +728,7 @@ s_{3,0} & s_{3,1} & s_{3,2} & s_{3,3}
 \end_layout
 
 \begin_layout Standard
-On 32-bit processors, the state can be though of as an array of four 32-bit
+On 32-bit processors, the state can be thought of as an array of four 32-bit
  words, where each word represents a column of the state.
  The first word address points to 
 \begin_inset Formula $s_{0,0}$
@@ -722,8 +738,8 @@ On 32-bit processors, the state can be though of as an array of four 32-bit
 \end_layout
 
 \begin_layout Standard
-The same series of steps are performed over and over in some number of rounds,
- Nr (10 for AES-128, 12 for AES-192 and 14 for AES-256).
+The same series of state transformations are performed over and over in
+ some number of rounds, Nr (10 for AES-128, 12 for AES-192 and 14 for AES-256).
 \end_layout
 
 \begin_layout Standard
@@ -841,6 +857,30 @@ Pseudo code for AES encryption, as presented in FIPS197
 
 \end_layout
 
+\begin_layout Standard
+Each step of the algorithm can be expressed in terms of operations on words
+ (column vectors in the state).
+ Let 
+\begin_inset Formula $c\in\left\{ 0,1,2,3\right\} $
+\end_inset
+
+ index each column of the state.
+ Below we describe each transformation as matrix operations, where column
+ 
+\begin_inset Formula $c$
+\end_inset
+
+ of the new state 
+\begin_inset Formula $s^{\prime}$
+\end_inset
+
+ is given as a function of the current state 
+\begin_inset Formula $s$
+\end_inset
+
+.
+\end_layout
+
 \begin_layout Paragraph*
 SubBytes
 \end_layout
@@ -856,7 +896,11 @@ Substitute each byte of the state according to a substitution table (sbox).
 \end_inset
 
  according to the sbox.
- 
+ For all words 
+\begin_inset Formula $c\in\left\{ 0,1,2,3\right\} $
+\end_inset
+
+ we have 
 \begin_inset Formula 
 \[
 \left[\begin{array}{c}
@@ -886,11 +930,20 @@ Rotate row
 \begin_inset Formula $i$
 \end_inset
 
- by 
+ of the current state by 
 \begin_inset Formula $i$
 \end_inset
 
  bytes.
+ The following transformation yields column 
+\begin_inset Formula $c$
+\end_inset
+
+ for the new state 
+\begin_inset Formula $s^{\prime}$
+\end_inset
+
+.
 \begin_inset Formula 
 \[
 \left[\begin{array}{c}
@@ -916,7 +969,23 @@ MixColumns
 \end_layout
 
 \begin_layout Standard
-Each column is multiplied with a fixed matrix.
+Each column 
+\begin_inset Formula $c$
+\end_inset
+
+ of 
+\begin_inset Formula $s$
+\end_inset
+
+ is multiplied with a fixed matrix to get the corresponding column 
+\begin_inset Formula $c$
+\end_inset
+
+ of 
+\begin_inset Formula $s^{\prime}$
+\end_inset
+
+.
  The arithmetic operations are finite field operations in GF(256) 
 \begin_inset CommandInset citation
 LatexCommand cite
@@ -955,7 +1024,34 @@ AddRoundKey
 \end_layout
 
 \begin_layout Standard
-Simply xor each byte of the kurrent round key with the state.
+Simply xor each byte of the current round key with the state.
+ Let 
+\begin_inset Formula $k_{i,c}$
+\end_inset
+
+ denote byte 
+\begin_inset Formula $i$
+\end_inset
+
+ of column 
+\begin_inset Formula $c$
+\end_inset
+
+ in the key used for 
+\begin_inset Formula $round\in\left\{ 1,\,...,\, Nr\right\} $
+\end_inset
+
+, similar to the state array numbering.
+ A key expansion algorithm is used to generate a separate key for each round
+ of encryption based on the original key.
+ See 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "FIPS197"
+
+\end_inset
+
+ for details.
  
 \begin_inset Formula 
 \[
@@ -989,7 +1085,11 @@ Efficient implementation using tables
 \begin_layout Standard
 We can optimize the cipher by combining each of the steps to one.
  In column matrix notation, SubBytes, ShiftRows, MixColumns and AddRoundKey
- combined to one gives a single expression for each column.
+ combined to one gives a single expression for each column 
+\begin_inset Formula $c$
+\end_inset
+
+.
 \begin_inset Formula 
 \[
 \left[\begin{array}{c}
@@ -1046,7 +1146,7 @@ s_{3,c}^{\prime}
 03\\
 02\\
 01
-\end{array}\right]\oplus SB[s_{1,c+3\bmod4}]\left[\begin{array}{c}
+\end{array}\right]\oplus SB[s_{3,c+3\bmod4}]\left[\begin{array}{c}
 01\\
 01\\
 03\\
@@ -1066,8 +1166,38 @@ k_{3,c}
 
 \begin_layout Standard
 Each of the first four components are 32-bit words as a function of byte
- value.
- Each of these can be precomputed and stored in tables of size 
+ value, that for a given column 
+\begin_inset Formula $c$
+\end_inset
+
+ is 
+\begin_inset Formula $s_{0,c}$
+\end_inset
+
+, 
+\begin_inset Formula $s_{1,c+1\bmod4}$
+\end_inset
+
+, 
+\begin_inset Formula $s_{2,c+2\bmod4}$
+\end_inset
+
+ and 
+\begin_inset Formula $s_{3,c+3\bmod4}$
+\end_inset
+
+.
+ Each byte can have only 
+\begin_inset Formula $256$
+\end_inset
+
+ different values, which means that we can precompute and store the result
+ of each operation as an array of words indexed by byte value.
+ Each table will contain 
+\begin_inset Formula $256$
+\end_inset
+
+ words, so the size will be 
 \begin_inset Formula $4\times256=1KB$
 \end_inset
 
@@ -1076,13 +1206,16 @@ Each of the first four components are 32-bit words as a function of byte
 \begin_inset Formula $\bullet$
 \end_inset
 
- denote finite field multiplication.
- Define tables 
+ denote finite field multiplication, and define tables 
 \begin_inset Formula $T_{1}$
 \end_inset
 
  to 
 \begin_inset Formula $T_{4}$
+\end_inset
+
+ indexed by byte 
+\begin_inset Formula $x\in\left\{ 0,1,\,...,\,255\right\} $
 \end_inset
 
 .
@@ -1118,7 +1251,12 @@ T_{1}[x]=\left[\begin{array}{c}
 \end_layout
 
 \begin_layout Standard
-Finally, we can write a round of encryption as
+Finally, we can write a round of encryption as a series of lookups and xors
+ defined for each state column 
+\begin_inset Formula $c\in\left\{ 0,1,2,3\right\} $
+\end_inset
+
+.
 \begin_inset Formula 
 \[
 \left[\begin{array}{c}
@@ -1139,6 +1277,14 @@ k_{3,c}
 
 \end_layout
 
+\begin_layout Standard
+This approach combines all the steps in one round; SubBytes, ShiftRows,
+ MixColumns and AddRoundKey.
+ Note that the very last round (Algorithm 5) does not contain the MixColumns
+ step, so we can not use the same lookup method for this step.
+ 
+\end_layout
+
 \begin_layout Subsection
 Results
 \end_layout
@@ -1156,7 +1302,7 @@ Implementing SHA
 \end_layout
 
 \begin_layout Standard
-The library contains hashs function SHA1 and SHA2 (SHA224, SHA256, SHA384
+Our library contains hashs function SHA1 and SHA2 (SHA224, SHA256, SHA384
  and SHA512).
  These are implemented using a Merkle-Damgård base class which handles putting
  data into the hash function, required internal buffering and constructs
@@ -1204,6 +1350,7 @@ Lorem Ipsum
 
 \begin_layout Standard
 \begin_inset Float table
+placement H
 wide false
 sideways false
 status open
@@ -1446,7 +1593,7 @@ Implementing RSA
 \end_layout
 
 \begin_layout Standard
-The library contains RSA Key Generation and encryption/decryption features.
+Our library contains RSA Key Generation and encryption/decryption features.
  We use the Phobos BigInt library.
  However, we found it to be incomplete for our use.
  It was missing a modular exponentiation method, and utility functions like
@@ -1613,7 +1760,18 @@ key "Dlang"
 
 \end_inset
 
-Official homepage of the D programming language (dlang.org)
+Official homepage of the D programming language, 
+\begin_inset Flex URL
+status collapsed
+
+\begin_layout Plain Layout
+
+dlang.org
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Bibliography
@@ -1625,8 +1783,18 @@ key "Phobos"
 
 \end_inset
 
-D standard library (Phobos).
- (https://github.com/D-Programming-Language/phobos)
+D standard library (Phobos), 
+\begin_inset Flex URL
+status collapsed
+
+\begin_layout Plain Layout
+
+https://github.com/D-Programming-Language/phobos
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Bibliography
@@ -1658,7 +1826,18 @@ Secure Hash Standard (SHS)
 \begin_inset Quotes erd
 \end_inset
 
-, http://csrc.nist.gov/publications/fips/fips180-3/fips180-3_final.pdf
+, 
+\begin_inset Flex URL
+status collapsed
+
+\begin_layout Plain Layout
+
+http://csrc.nist.gov/publications/fips/fips180-3/fips180-3_final.pdf
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Bibliography
@@ -1678,7 +1857,18 @@ Optimal Asymmetric Encryption How to Encrypt with RSA
 \begin_inset Quotes erd
 \end_inset
 
-, http://cseweb.ucsd.edu/users/mihir/papers/oae.pdf
+, 
+\begin_inset Flex URL
+status collapsed
+
+\begin_layout Plain Layout
+
+http://cseweb.ucsd.edu/users/mihir/papers/oae.pdf
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Bibliography
@@ -1697,7 +1887,18 @@ PKCS #1 v2.1: RSA Cryptography Standard
 \begin_inset Quotes eld
 \end_inset
 
-, ftp://ftp.rsasecurity.com/pub/pkcs/pkcs-1/pkcs-1v2-1.pdf
+, 
+\begin_inset Flex URL
+status collapsed
+
+\begin_layout Plain Layout
+
+ftp://ftp.rsasecurity.com/pub/pkcs/pkcs-1/pkcs-1v2-1.pdf
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Bibliography
@@ -1716,7 +1917,18 @@ Private-Key Information Syntax Specification Version 1.2
 \begin_inset Quotes erd
 \end_inset
 
-, http://tools.ietf.org/html/rfc5208
+, 
+\begin_inset Flex URL
+status collapsed
+
+\begin_layout Plain Layout
+
+http://tools.ietf.org/html/rfc5208
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Bibliography
@@ -1735,7 +1947,18 @@ RFC 4880: OpenPGP Message Format
 \begin_inset Quotes erd
 \end_inset
 
-, http://tools.ietf.org/html/rfc4880#section-13.1
+, 
+\begin_inset Flex URL
+status collapsed
+
+\begin_layout Plain Layout
+
+http://tools.ietf.org/html/rfc4880#section-13.1
+\end_layout
+
+\end_inset
+
+
 \end_layout
 
 \begin_layout Bibliography
@@ -1754,7 +1977,18 @@ OpenSSL Rand Documentation
 \begin_inset Quotes erd
 \end_inset
 
-, http://www.openssl.org/docs/crypto/rand.html 
+, 
+\begin_inset Flex URL
+status open
+
+\begin_layout Plain Layout
+
+http://www.openssl.org/docs/crypto/rand.html
+\end_layout
+
+\end_inset
+
+ 
 \end_layout
 
 \end_body
