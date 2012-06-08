@@ -255,94 +255,6 @@ Below we will highlight some of the interesting features of the language,
 \end_layout
 
 \begin_layout Paragraph*
-Array slicing
-\end_layout
-
-\begin_layout Standard
-In D, an array can either be statically allocated (with size known at compile-ti
-me), or dynamically (on the heap at run-time).
- A reference to an array carries some metadata, the array length, making
- it a 
-\begin_inset Quotes eld
-\end_inset
-
-fat pointer
-\begin_inset Quotes erd
-\end_inset
-
-.
- One can obtain a new reference (in constant time) to a subset of an array
- by slicing.
- For instance, given heap-allocated array A, the expression 
-\begin_inset listings
-lstparams "basicstyle={\ttfamily}"
-inline true
-status open
-
-\begin_layout Plain Layout
-
-A[5 ..
- $]
-\end_layout
-
-\end_inset
-
- returns a reference to elements of A, starting at element 5.
- The special token $ is an alias of the array length.
- 
-\end_layout
-
-\begin_layout Standard
-Initially the memory model of D can be a bit elusive, as the level of abstractio
-n is a tiny bit above what you might be used to in C or C++.
- But when the different copy and assign semantics become clear, the elegant
- array syntax of the language helps a great deal in producing elegant, as
- well as efficient code.
- 
-\begin_inset Float algorithm
-placement H
-wide false
-sideways false
-status open
-
-\begin_layout Plain Layout
-\begin_inset listings
-lstparams "basicstyle={\ttfamily}"
-inline false
-status open
-
-\begin_layout Plain Layout
-
-invMixColumns( dw[i*4 ..
- (i+1)*4] );
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Plain Layout
-\begin_inset Caption
-
-\begin_layout Plain Layout
-Example of calling a function (from the AES module) with a slice of array
- dw, starting at index i*4 and ending at index (i+1)*4.
- No copying is performed, only a fat pointer is passed to the function invMixCol
-umns.
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Paragraph*
 Unit tests
 \end_layout
 
@@ -369,10 +281,22 @@ unittest
 \end_layout
 
 \begin_layout Standard
-In release modes, the compiler ignores all unittest code, so there is no
- overhead in including them.
- As a separate point, integrated unittests are supposed to help with documenting
- the code.
+From our experiences with similar-sized projects in other programming languages,
+ tests are almost always ignored.
+ In the case of D, we found that the seamless integration of unit tests
+ actually made us write them.
+ Including tests for the core functionality has some benefits; 
+\end_layout
+
+\begin_layout Itemize
+Tests helps weeding out errors early on.
+ The time you save debugging a function by catching errors with a simple
+ test will make it worth it writing the test in the first place.
+ 
+\end_layout
+
+\begin_layout Itemize
+Integrated unittests are supposed to help with documenting the code.
  They can be seen used extensively in the D standard library 
 \begin_inset CommandInset citation
 LatexCommand cite
@@ -381,8 +305,13 @@ key "Phobos"
 \end_inset
 
 .
- We also use unittests extensively, testing the results of the AES and hash
- functions, for instance.
+\end_layout
+
+\begin_layout Standard
+In release modes, the compiler ignores all unittest code, so there is no
+ overhead in including them.
+ We use unittests extensively, for instance in testing the results of the
+ AES and hash functions.
 \end_layout
 
 \begin_layout Standard
@@ -626,16 +555,89 @@ Block ciphers
 \end_layout
 
 \begin_layout Standard
-A block cipher is ...
-\end_layout
+Informally, a block cipher is a function that given a key can transform
+ messages (plaintext) to ciphertext, or ciphertext back to messages.
+ Usually we define the domain to be binary numbers.
+ With message length 
+\begin_inset Formula $l$
+\end_inset
 
-\begin_layout Paragraph*
-RSA
+ (in bits), and some key 
+\begin_inset Formula $K$
+\end_inset
+
+ we can denote a block cipher as a function 
+\begin_inset Formula $E_{K}:\left\{ 0,1\right\} ^{l}\rightarrow\left\{ 0,1\right\} ^{l}$
+\end_inset
+
+.
+ Unlike hash functions, there will always be an inverse 
+\begin_inset Formula $E_{K}^{-1}:\left\{ 0,1\right\} ^{l}\rightarrow\left\{ 0,1\right\} ^{l}$
+\end_inset
+
+.
+ 
+\begin_inset Formula $E$
+\end_inset
+
+ is a permutation for every key 
+\begin_inset Formula $K$
+\end_inset
+
+.
 \end_layout
 
 \begin_layout Standard
-RSA is a public-key cryptography scheme.
- It works by ...
+Examples of block ciphers include DES, AES, RC5 and Blowfish.
+\end_layout
+
+\begin_layout Paragraph*
+Public key cryptography
+\end_layout
+
+\begin_layout Standard
+In these schemes there are two keys involved in encryption and decryption:
+ a public key and a private key.
+ The idea is to have a function 
+\begin_inset Formula $f\left(x\right)$
+\end_inset
+
+ constructed using some public key, with the property that getting back
+ 
+\begin_inset Formula $x$
+\end_inset
+
+ (the message) is hard without some secret (private key).
+ 
+\end_layout
+
+\begin_layout Standard
+As an example of how this could work, consider Alice wanting to send a message
+ to Bob.
+ Alice needs to aquire Bob's public key, and use that to compute the function
+ 
+\begin_inset Formula $f\left(x\right)$
+\end_inset
+
+.
+ Now, the function 
+\begin_inset Formula $f$
+\end_inset
+
+
+\begin_inset Formula $^{-1}\left(f\left(x\right)\right)$
+\end_inset
+
+ can only be computed by Bob, who has the private key.
+\end_layout
+
+\begin_layout Standard
+There are multiple ways of implementing the function 
+\begin_inset Formula $f$
+\end_inset
+
+, RSA being one concrete scheme.
+ 
 \end_layout
 
 \begin_layout Section
