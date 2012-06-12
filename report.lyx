@@ -99,7 +99,6 @@ Many of the more popular programming languages support cryptographic algorithms
  encryption like RSA in D.
  There are however, third party libraries for basic cryptography, but they
  are either incomplete or not under active development.
- 
 \end_layout
 
 \begin_layout Standard
@@ -452,7 +451,7 @@ compile time arguments
  We utilize these features heavily in our library, giving us the ability
  to abstract away details like key length, internal data type or output
  byte length from the algorithms, and specifying that for each incarnation
- (for instance, in the SHA family).
+ (for instance, each variant of the SHA family).
 \end_layout
 
 \begin_layout Standard
@@ -537,7 +536,7 @@ A hash function is a one-way function
 \end_inset
 
 .
- An example is the hash functions MD5, which maps bits of arbitrary length
+ An example is the hash function MD5, which maps bits of arbitrary length
  to bitstrings of length 
 \begin_inset Formula $128$
 \end_inset
@@ -670,7 +669,7 @@ tions in any cryptographic library.
  way too slow for real world applications.
  A naive implementation in D gave a throughput of about 1MB/s on an Intel
  Core 2 Duo running at 2.4GHz.
- As a reference, benchmarking AES in openssl running 
+ As a reference, benchmarking AES in OpenSSL running 
 \begin_inset Quotes eld
 \end_inset
 
@@ -889,7 +888,7 @@ SubBytes
 
 \begin_layout Standard
 Substitute each byte of the state according to a substitution table (sbox).
- let 
+ Let 
 \begin_inset Formula $SB[x]$
 \end_inset
 
@@ -1304,11 +1303,11 @@ Implementing SHA
 \end_layout
 
 \begin_layout Standard
-Our library contains hashs function SHA1 and SHA2 (SHA224, SHA256, SHA384
+Our library contains hash functions SHA1 and SHA2 (SHA224, SHA256, SHA384
  and SHA512).
  These are implemented using a Merkle-Damgård base class which handles putting
  data into the hash function, required internal buffering and constructs
- common to MD hash functions.
+ common to MD.
  A common Hash base class defines the interface and includes convinience
  functions and templates for its use.
  The implementations follow the outline and uses the nomenclature as defined
@@ -1325,7 +1324,7 @@ key "SHS"
 
 \begin_layout Standard
 We were interested in comparing the speed of our SHA implementation with
- current widely employed implementations, namely the OpenSSL version.
+ a current widely employed implementation, namely the OpenSSL version.
  We created a simple benchmark test.
  In each round, we take the hash of 
 \begin_inset Quotes eld
@@ -1585,7 +1584,10 @@ The results show that our version is about 2.5 times slower than OpenSSL,
 ions have an effect.
  Before we could give fair judgement on the speed of C versus D code, our
  version would need optimizations.
- It is also possible, by rewriting some of the equations, to implement parts
+\end_layout
+
+\begin_layout Standard
+It is also possible, by rewriting some of the equations, to implement parts
  of it using SIMD vector instructions, supported by newer processors.
  However, we have not pursued these optimizations further in this project.
 \end_layout
@@ -1599,16 +1601,17 @@ Our library contains RSA Key Generation and encryption/decryption features.
  We use the Phobos BigInt library.
  However, we found it to be incomplete for our use.
  It was missing a modular exponentiation method, and utility functions like
- converting from and to byte arrays.
- We forked BigInt and added these functions ourselves.
+ converting from/to native D byte arrays.
+ In addition, we needed random BigInts.
+ We forked BigInt and added this functionality ourselves.
 \end_layout
 
 \begin_layout Standard
-The RSA Key Generation contains all functionality necessary to create RSA
- keys.
+The RSA Key Generation contains all functionality necessary to create new
+ RSA keys.
  For prime verification, first we check the number modulo the lowest primes.
  We then verify the candidates using the Miller-Rabin primality test.
- At each iteration, get a random number 
+ At each iteration, fetch a random number 
 \begin_inset Formula $a$
 \end_inset
 
@@ -1622,12 +1625,13 @@ The RSA Key Generation contains all functionality necessary to create RSA
 \end_inset
 
 's less than the number.
- Our key generation will find a composite number with a probability of at
- most 
+ Our key generation will return a composite number (instead of a prime)
+ with a probability of at most 
 \begin_inset Formula $\dfrac{1}{4^{N}}$
 \end_inset
 
-, where we have set 
+.
+ We have set 
 \begin_inset Formula $N=40$
 \end_inset
 
@@ -1636,7 +1640,7 @@ The RSA Key Generation contains all functionality necessary to create RSA
 
 \begin_layout Standard
 We have implemented a Random generator interface and a simple insecure Random
- Number generator, based on a Mersenne Twister engine which is a part of
+ Number generator, based on a Mersenne Twister engine, which is a part of
  the D standard library.
  This is only for testing, and could create the same keys if two persons
  run it at the same second.
@@ -1687,8 +1691,22 @@ key "PKCS1 v2.1"
 , which differ in the details from the suggested scheme of the original
  paper.
  We use SHA1 within the Mask Generation Function.
- RSAES-OAEP can operate on messages of length up to k – 2hashLength – 2
- bytes, with k as the size of the modulus in bytes, and hashLength as 128
+ RSAES-OAEP can operate on messages of length up to 
+\begin_inset Formula $k-2hashLength-2$
+\end_inset
+
+ bytes, with 
+\begin_inset Formula $k$
+\end_inset
+
+ as the size of the modulus in bytes, and 
+\begin_inset Formula $hashLength$
+\end_inset
+
+ as 
+\begin_inset Formula $128$
+\end_inset
+
  in our case.
  This introduces randomness at the cost of a smaller message space than
  unpadded or PKCS v1.5.
@@ -1711,7 +1729,7 @@ key "PKCS8"
  RSA Security recommends RSAES-OAEP for new applications, but includes PKCS1-v1.5
  for compatibility.
  However, v1.5 is still heavily used.
- For instance, the OpenPGP standard only supports v1.5 padding 
+ For instance, the OpenPGP standard supports only v1.5 padding 
 \begin_inset CommandInset citation
 LatexCommand cite
 key "RFC4880"
@@ -1720,7 +1738,7 @@ key "RFC4880"
 
 .
  We've not implemented the signature schemes in PCKS#1 v2.1.
- This would also be an useful addition to the library.
+ This would also be an useful addition to our library.
 \end_layout
 
 \begin_layout Section
@@ -1728,16 +1746,19 @@ Conclusions
 \end_layout
 
 \begin_layout Standard
-We have implemented AES, SHA and RSA in D.
- We would of course have liked to be able to cover more primitives, as well
- as high-level schemes, but encountered performance challenges along the
- way.
+We have implemented AES, SHA, CBC and RSA in the D programming language.
+ In order to make our library ready for practical use, some functionality
+ is missing.
+ These include signature schemes, loading existing keys, and a crypto-grade
+ PRNG.
+ We would of course have liked to cover more primitives, as well as high-level
+ schemes, but encountered performance challenges along the way.
  We have learned that hardware-specific implementations and optimizations
  are extremely important in order to get high performance.
  Our results show that our semi-optimized solutions are generally quite
  fast, but still not as fast as the more common C implementations.
- Further work is required to make our library competitive with f.ex openssl.
- 
+ In order to fairly judge the speed of the D language, we would have to
+ implement the same optimizations in D.
 \end_layout
 
 \begin_layout Bibliography
@@ -1981,7 +2002,7 @@ OpenSSL Rand Documentation
 
 , 
 \begin_inset Flex URL
-status open
+status collapsed
 
 \begin_layout Plain Layout
 
