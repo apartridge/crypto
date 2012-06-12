@@ -93,7 +93,7 @@ Introduction
 Many of the more popular programming languages support cryptographic algorithms
  like symmetric encryption, hashing and public key cryptography as part
  of a standard library.
- It has been suggested to add native crypto implementation in the D standard
+ It has been suggested to add a native crypto implementation in the D standard
  library (Phobos), but so far this has not been done.
  In particular, there seems to be no standard implementation of asymmetric
  encryption like RSA in D.
@@ -213,8 +213,8 @@ Example code in D.
 \end_layout
 
 \begin_layout Standard
-So why yet another language you might ask? The creators of D argue that
- the language fills a need for a powerful modern systems programming language.
+The creators of D argue that the language fills a need for a powerful modern
+ systems programming language.
  It combines features such as managed (garbage collected) code like C# and
  Java, yet it compiles to efficient native machine code like C or C++.
  Native code is especially important in cryptography, as the algorithms
@@ -235,8 +235,8 @@ dlang.org
 \end_layout
 
 \begin_layout Standard
-The current incarnation is known as D2, and its standard library is called
- Phobos.
+The current incarnation of the language is known as D2, and its standard
+ library is called Phobos.
  For more information about D, we refer to the official homepage 
 \begin_inset CommandInset citation
 LatexCommand cite
@@ -277,41 +277,8 @@ unittest
  keyword, which declares a block statement that is supposed to run (and
  hopefully pass without assertion errors) every time the program is compiled
  and run.
- 
-\end_layout
-
-\begin_layout Standard
-From our experiences with similar-sized projects in other programming languages,
- tests are almost always ignored.
- In the case of D, we found that the seamless integration of unit tests
- actually made us write them.
- Including tests for the core functionality has some benefits; 
-\end_layout
-
-\begin_layout Itemize
-Tests helps weeding out errors early on.
- The time you save debugging a function by catching errors with a simple
- test will make it worth it writing the test in the first place.
- 
-\end_layout
-
-\begin_layout Itemize
-Integrated unittests are supposed to help with documenting the code.
- They can be seen used extensively in the D standard library 
-\begin_inset CommandInset citation
-LatexCommand cite
-key "Phobos"
-
-\end_inset
-
-.
-\end_layout
-
-\begin_layout Standard
-In release modes, the compiler ignores all unittest code, so there is no
+ In release modes, the compiler ignores all unittest code, so there is no
  overhead in including them.
- We use unittests extensively, for instance in testing the results of the
- AES and hash functions.
 \end_layout
 
 \begin_layout Standard
@@ -319,7 +286,7 @@ In release modes, the compiler ignores all unittest code, so there is no
 placement H
 wide false
 sideways false
-status collapsed
+status open
 
 \begin_layout Plain Layout
 \begin_inset listings
@@ -358,7 +325,20 @@ unittest
 \begin_layout Plain Layout
 Example of a unit test in the AES module.
  As a separate statement below the function body we include a little snippet
- of code to verify everything works as expected.
+ of code to verify the 
+\begin_inset listings
+lstparams "basicstyle={\ttfamily}"
+inline true
+status open
+
+\begin_layout Plain Layout
+
+subWord
+\end_layout
+
+\end_inset
+
+ function works as expected.
  
 \end_layout
 
@@ -372,6 +352,32 @@ Example of a unit test in the AES module.
 
 \end_layout
 
+\begin_layout Standard
+We use unittests extensively in our implementation, for instance in testing
+ the results of the AES and hash functions.
+ There are several reasons for using this feature:
+\end_layout
+
+\begin_layout Itemize
+Tests helps weeding out errors early on.
+ The time you save debugging a function by catching errors with a simple
+ test will make it worthwile to write the test in the first place.
+ 
+\end_layout
+
+\begin_layout Itemize
+Integrated unittests are supposed to help with documenting the code; both
+ as a kind of proof of correctness, and as an example of usage.
+ They can be seen used extensively in the D standard library 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Phobos"
+
+\end_inset
+
+.
+\end_layout
+
 \begin_layout Paragraph*
 Integrated assembly code
 \end_layout
@@ -382,7 +388,7 @@ D has a very cool feature for integrating assembly code directly in the
  In C and C++, different compilers have different solutions to mixing assembly
  together with the program code.
  To make this seamless, D has its own assembler, and assembly code can be
- used by the 
+ used in blocks declared with the 
 \begin_inset listings
 lstparams "basicstyle={\ttfamily}"
 inline true
@@ -429,7 +435,7 @@ Templates is a powerful feature that allows classes or functions to operate
  The classic example is a swap function, which makes sense for most data
  types, not only ints or floats.
  They can also be used for complex compile time evalutations of functions.
- Templates has it's role in C++, but have heavy syntax and often impairs
+ Templates has it's role in C++, but have convoluted syntax and often impairs
  compilation times.
  In D, they have much cleaner syntax, making them 
 \begin_inset Quotes eld
@@ -607,16 +613,20 @@ In these schemes there are two keys involved in encryption and decryption:
 \begin_inset Formula $x$
 \end_inset
 
- (the message) is hard without some secret (private key).
+ (the message) is hard without knowing some secret (private key).
  
 \end_layout
 
 \begin_layout Standard
 As an example of how this could work, consider Alice wanting to send a message
+ 
+\begin_inset Formula $M$
+\end_inset
+
  to Bob.
  Alice needs to aquire Bob's public key, and use that to compute the function
  
-\begin_inset Formula $f\left(x\right)$
+\begin_inset Formula $f\left(M\right)$
 \end_inset
 
 .
@@ -625,7 +635,7 @@ As an example of how this could work, consider Alice wanting to send a message
 \end_inset
 
 
-\begin_inset Formula $^{-1}\left(f\left(x\right)\right)$
+\begin_inset Formula $^{-1}\left(f\left(M\right)\right)$
 \end_inset
 
  can only be computed by Bob, who has the private key.
@@ -636,7 +646,7 @@ There are multiple ways of implementing the function
 \begin_inset Formula $f$
 \end_inset
 
-, RSA being one concrete scheme.
+, RSA being one possible scheme.
  
 \end_layout
 
@@ -683,8 +693,8 @@ openssl speed aes-128-cbc
 \end_layout
 
 \begin_layout Standard
-To see how we can do better, let's look at what happens during a round of
- AES encryption.
+To see how we can do better, we have to look at what happens during a round
+ of AES encryption.
  
 \end_layout
 
