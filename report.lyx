@@ -71,7 +71,11 @@ Lars Kirkholt Melhus and Stian Pedersen
 \begin_layout Abstract
 In this paper we describe our experiences with implementing some common
  cryptographic primitives in the D programming language.
- The result can be found at 
+ 
+\end_layout
+
+\begin_layout Abstract
+The result can be found at 
 \begin_inset Flex URL
 status open
 
@@ -1094,10 +1098,14 @@ Efficient implementation using tables
 \end_layout
 
 \begin_layout Standard
-We can optimize the cipher by combining each of the steps to one.
+We can optimize the cipher by combining the steps.
  In column matrix notation, SubBytes, ShiftRows, MixColumns and AddRoundKey
- combined to one gives a single expression for each column 
+ combined gives a single expression for each column 
 \begin_inset Formula $c$
+\end_inset
+
+ in the next state 
+\begin_inset Formula $s^{\prime}$
 \end_inset
 
 .
@@ -1132,17 +1140,13 @@ k_{3,c}
 \end_layout
 
 \begin_layout Standard
-We can split this into five components, using the fact that addition under
- GF(256) is xor.
- 
+We can split this into components, using the fact that addition under GF(256)
+ is xor.
+ Excluding addition of the round key, the matrix product yielding the next
+ state column can be written as 
 \begin_inset Formula 
 \[
-\left[\begin{array}{c}
-s_{0,c}^{\prime}\\
-s_{1,c}^{\prime}\\
-s_{2,c}^{\prime}\\
-s_{3,c}^{\prime}
-\end{array}\right]=SB[s_{0,c}]\left[\begin{array}{c}
+SB[s_{0,c}]\left[\begin{array}{c}
 02\\
 01\\
 01\\
@@ -1162,12 +1166,7 @@ s_{3,c}^{\prime}
 01\\
 03\\
 02
-\end{array}\right]\oplus\left[\begin{array}{c}
-k_{0,c}\\
-k_{1,c}\\
-k_{2,c}\\
-k_{3,c}
-\end{array}\right]_{round}
+\end{array}\right]
 \]
 
 \end_inset
@@ -1176,8 +1175,8 @@ k_{3,c}
 \end_layout
 
 \begin_layout Standard
-Each of the first four components are 32-bit words as a function of byte
- value, that for a given column 
+Each of the four components are 32-bit words as a function of byte value,
+ which for a given column 
 \begin_inset Formula $c$
 \end_inset
 
@@ -1197,7 +1196,7 @@ Each of the first four components are 32-bit words as a function of byte
 \begin_inset Formula $s_{3,c+3\bmod4}$
 \end_inset
 
-.
+ respectively.
  Each byte can have only 
 \begin_inset Formula $256$
 \end_inset
@@ -1302,7 +1301,8 @@ Results
 
 \begin_layout Standard
 Using the optimized table implementation we achieved a throughput of about
- 30MB/s, a huge improvement over the straight-forward implementation.
+ 30MB/s, a huge improvement over the straight-forward implementation described
+ in the standard.
  This is still not as fast as highly optimized C/assembly implementations
  like OpenSSL, however we do believe that the gap can be reduced by further
  optimization like more loop unrolling, inline assembly etc.
@@ -1756,7 +1756,7 @@ Conclusions
 \end_layout
 
 \begin_layout Standard
-We have implemented AES, SHA, CBC and RSA in the D programming language.
+We have implemented AES, SHA and RSA in the D programming language.
  In order to make our library ready for practical use, some functionality
  is missing.
  These include signature schemes, loading existing keys, and a crypto-grade
@@ -1795,11 +1795,11 @@ key "Dlang"
 
 Official homepage of the D programming language, 
 \begin_inset Flex URL
-status collapsed
+status open
 
 \begin_layout Plain Layout
 
-dlang.org
+http://www.dlang.org
 \end_layout
 
 \end_inset
