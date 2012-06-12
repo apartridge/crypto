@@ -475,7 +475,7 @@ class Bar(T) {
 
 \begin_layout Plain Layout
 
-T member;
+    T member;
 \end_layout
 
 \begin_layout Plain Layout
