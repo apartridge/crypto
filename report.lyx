@@ -1290,8 +1290,8 @@ k_{3,c}
 \begin_layout Standard
 This approach combines all the steps in one round; SubBytes, ShiftRows,
  MixColumns and AddRoundKey.
- Note that the very last round (Algorithm 5) does not contain the MixColumns
- step, so we can not use the same lookup method for this step.
+ Note that the last round does not contain the MixColumns step, so we can
+ not use the same lookup method for this step.
  
 \end_layout
 
