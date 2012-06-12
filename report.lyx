@@ -1318,7 +1318,7 @@ Our library contains hash functions SHA1 and SHA2 (SHA224, SHA256, SHA384
  These are implemented using a Merkle-Damgård base class which handles putting
  data into the hash function, required internal buffering and constructs
  common to MD.
- A common Hash base class defines the interface and includes convinience
+ A common Hash base class defines the interface and includes convenience
  functions and templates for its use.
  The implementations follow the outline and uses the nomenclature as defined
  by the SHA standard.
@@ -1334,7 +1334,7 @@ key "SHS"
 
 \begin_layout Standard
 We were interested in comparing the speed of our SHA implementation with
- a current widely employed implementation, namely the OpenSSL version.
+ a current widely employed implementation, the OpenSSL version.
  We created a simple benchmark test.
  In each round, we take the hash of 
 \begin_inset Quotes eld
@@ -1355,8 +1355,8 @@ Lorem Ipsum
  string.
  We include the longer string to stress test the buffering capabilities
  of the implementations.
- All hash functions return binary results to avoid overhead of convert to
- strings.
+ All hash functions return binary results to avoid overhead of converting
+ to strings.
 \end_layout
 
 \begin_layout Standard
@@ -1590,8 +1590,8 @@ The results show that our version is about 2.5 times slower than OpenSSL,
  We have compared our implementation with OpenSSL.
  Their current implementation depends heavily on macros, unrolling the rounds
  loop and chaining round variables smarter than we do.
- It is obvious that all the time is spent inside round loops and these optimizat
-ions have an effect.
+ It is obvious that most of the time is spent inside round loops and these
+ optimizations have an effect.
  Before we could give fair judgement on the speed of C versus D code, our
  version would need optimizations.
 \end_layout
@@ -1908,6 +1908,7 @@ http://cseweb.ucsd.edu/users/mihir/papers/oae.pdf
 \labelwidthstring References
 \begin_inset CommandInset bibitem
 LatexCommand bibitem
+label "PKCS1V21"
 key "PKCS1 v2.1"
 
 \end_inset
@@ -1938,6 +1939,7 @@ ftp://ftp.rsasecurity.com/pub/pkcs/pkcs-1/pkcs-1v2-1.pdf
 \labelwidthstring References
 \begin_inset CommandInset bibitem
 LatexCommand bibitem
+label "PKCS8"
 key "PKCS8"
 
 \end_inset
@@ -1968,6 +1970,7 @@ http://tools.ietf.org/html/rfc5208
 \labelwidthstring References
 \begin_inset CommandInset bibitem
 LatexCommand bibitem
+label "RFC4880"
 key "RFC4880"
 
 \end_inset
@@ -1998,6 +2001,7 @@ http://tools.ietf.org/html/rfc4880#section-13.1
 \labelwidthstring References
 \begin_inset CommandInset bibitem
 LatexCommand bibitem
+label "OpenSSL Rand"
 key "OpenSSL Rand Documentation"
 
 \end_inset
